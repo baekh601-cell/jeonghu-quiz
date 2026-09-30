@@ -184,6 +184,7 @@ function stageQuestions(w, info, n) {
 
 function playStage(w, k) {
   $app.classList.remove('on-map');
+  document.getElementById('ui').innerHTML = '';
   const info = stageInfo(w, k);
   const id = sid(w, k);
   const quit = () => toMap();

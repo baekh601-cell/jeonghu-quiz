@@ -58,7 +58,8 @@ const JH = { // 정후 표정
   wrong: (c = '') => art('jeonghu-wrong', '😅', 'who pop ' + c),
   king: (c = '') => art('jeonghu-king', '🤴', 'who ' + c),
   explorer: (c = '') => art('jeonghu-explorer', '🕵️', 'who ' + c),
-  walk: (c = '') => art('jeonghu-walk', '🧒', 'who ' + c),
+  walk: (c = '') => art(ASSETS['jeonghu-walk'] ? 'jeonghu-walk' : 'jeonghu-wave', '🧒', 'who ' + c), // 걷는 그림이 없으면 손 흔드는 그림
+
 };
 if (ASSETS['bg-sky']) { document.body.classList.add('has-bg'); document.body.style.setProperty('--bg-img', `url(${ASSETS['bg-sky']})`); }
 
