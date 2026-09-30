@@ -8,6 +8,7 @@ const save = {
   wrong: [],       // 오답 노트
   perCat: {},      // 카테고리별 { n, ok }
   mapBest: {},     // 지역별 최고 점수
+  stamps: {},      // 여행지별 받은 도장 수
 };
 try { Object.assign(save, JSON.parse(localStorage.getItem(STORE_KEY)) || {}); } catch (e) { /* 저장소 없음 */ }
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) { /* 무시 */ } }
@@ -21,22 +22,111 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const stars = (d) => '★'.repeat(d) + '☆'.repeat(3 - d);
 const DIFF_NAME = { 0: '섞어서', 1: '쉬움', 2: '보통', 3: '어려움' };
 function levelOf(xp) { const lv = Math.floor(Math.sqrt(xp / 60)) + 1; const cur = 60 * (lv - 1) ** 2, next = 60 * lv ** 2; return { lv, pct: (xp - cur) / (next - cur), toNext: next - xp }; }
-const TITLES = ['견습 승무원', '승무원', '부기장', '기장', '베테랑 기장', '지리 박사', '역사 박사', '퀴즈 마스터', '세계 탐험가', '살아있는 백과사전'];
-const titleOf = (lv) => TITLES[Math.min(TITLES.length - 1, Math.floor((lv - 1) / 3))];
+const RANKS = ['꼬마 여행자', '견습 승무원', '승무원', '부기장', '기장', '베테랑 기장', '세계 탐험가', '지구 박사', '전설의 탐험가'];
+const rankOf = (lv) => RANKS[Math.min(RANKS.length - 1, Math.floor((lv - 1) / 3))];
 function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
-  document.body.appendChild(t); setTimeout(() => t.remove(), 1600);
+  document.body.appendChild(t); setTimeout(() => t.remove(), 1700);
 }
 
-// ───────── 카테고리 ─────────
-const CATS = {
-  capital: { name: '나라와 수도', ic: '🏛️', desc: '수도·대륙 맞히기' },
-  flag: { name: '국기', ic: '🚩', desc: '어느 나라 국기일까?' },
-  history: { name: '역사', ic: '📜', desc: '한국사·세계사' },
-  science: { name: '과학 상식', ic: '🔬', desc: '우주·인체·자연' },
-  kbo: { name: '프로야구', ic: '⚾', desc: 'KBO 선수·구단' },
-  nonsense: { name: '넌센스', ic: '🤪', desc: '머리를 말랑말랑하게' },
+// ───────── 이미지 에셋 (없으면 이모지로 대신) ─────────
+const ASSETS = window.ASSETS || {};
+function art(name, emoji, cls = '') {
+  return ASSETS[name]
+    ? `<img class="art ${cls}" src="${ASSETS[name]}" alt="">`
+    : `<span class="art ph ${cls}" aria-hidden="true">${emoji}</span>`;
+}
+const JH = { // 정후 표정
+  wave: () => art('jeonghu-wave', '🧒', 'who'),
+  think: () => art('jeonghu-think', '🤔', 'who'),
+  correct: () => art('jeonghu-correct', '🥳', 'who pop'),
+  wrong: () => art('jeonghu-wrong', '😅', 'who pop'),
+  king: () => art('jeonghu-king', '🤴', 'who'),
+  explorer: () => art('jeonghu-explorer', '🕵️', 'who'),
 };
+if (ASSETS['bg-sky']) { document.body.classList.add('has-bg'); document.body.style.setProperty('--bg-img', `url(${ASSETS['bg-sky']})`); }
+
+// ───────── 모션 ─────────
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function show(render) { // 화면 전환: 새 화면이 톡 튀어 오른다
+  render();
+  $app.classList.remove('screen-in'); void $app.offsetWidth; $app.classList.add('screen-in');
+  window.scrollTo(0, 0);
+}
+function flyTo(render) { // 비행기가 화면을 가로지르며 다음 화면으로
+  if (reduced) return show(render);
+  const p = document.createElement('div');
+  p.className = 'flyby';
+  p.innerHTML = art('jeonghu-plane', '🛩️', '');
+  p.firstElementChild.style.cssText = 'width:100%;height:100%';
+  document.body.appendChild(p);
+  setTimeout(() => show(render), 420);
+  setTimeout(() => p.remove(), 1150);
+}
+function confetti(n = 90) {
+  if (reduced) return;
+  const c = document.createElement('canvas'); c.className = 'confetti';
+  const dpr = devicePixelRatio || 1; c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+  document.body.appendChild(c);
+  const ctx = c.getContext('2d'); ctx.scale(dpr, dpr);
+  const colors = ['#ffd43b', '#ff6b6b', '#3ddc97', '#4fb3ff', '#ffffff'];
+  const bits = Array.from({ length: n }, () => ({
+    x: innerWidth / 2 + (Math.random() - .5) * 120, y: innerHeight * .35,
+    vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4, r: Math.random() * 6.28, vr: (Math.random() - .5) * .4,
+    w: 7 + Math.random() * 7, h: 4 + Math.random() * 5, c: pick(colors),
+  }));
+  let t = 0;
+  (function frame() {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const b of bits) {
+      b.vy += .35; b.vx *= .99; b.x += b.vx; b.y += b.vy; b.r += b.vr;
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.r); ctx.fillStyle = b.c; ctx.strokeStyle = '#1f2a5a'; ctx.lineWidth = 1.5;
+      ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); ctx.strokeRect(-b.w / 2, -b.h / 2, b.w, b.h); ctx.restore();
+    }
+    if (++t < 130) requestAnimationFrame(frame); else c.remove();
+  })();
+}
+function floaty(text, el) {
+  const r = el.getBoundingClientRect();
+  const f = document.createElement('div'); f.className = 'floaty'; f.textContent = text;
+  f.style.left = `${r.left + r.width / 2 - 20}px`; f.style.top = `${r.top}px`;
+  document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
+}
+function celebrate(title, body, who = JH.king()) {
+  confetti(140);
+  const o = document.createElement('div'); o.className = 'overlay';
+  o.innerHTML = `<div class="card">${who}<h2>${title}</h2><p>${body}</p><button class="go">좋아요!</button></div>`;
+  document.body.appendChild(o);
+  o.querySelector('.go').onclick = () => o.remove();
+}
+function addXp(gain) {
+  const before = levelOf(save.xp).lv;
+  save.xp += gain;
+  const after = levelOf(save.xp).lv;
+  if (after > before) setTimeout(() => celebrate(`레벨 업! Lv.${after}`, `이제 정후는 <b>${rankOf(after)}</b>!`), 500);
+}
+
+// ───────── 여행지(카테고리) ─────────
+const CATS = {
+  capital: { name: '나라와 수도', ic: '🏛️', icon: 'icon-capital', desc: '수도·대륙 맞히기', c: '#4fb3ff' },
+  flag: { name: '국기', ic: '🚩', icon: 'icon-flag', desc: '어느 나라 국기일까?', c: '#ff6b6b' },
+  history: { name: '역사', ic: '📜', icon: 'icon-history', desc: '한국사·세계사', c: '#c48a3a' },
+  science: { name: '과학 상식', ic: '🔬', icon: 'icon-science', desc: '우주·인체·자연', c: '#3ddc97' },
+  kbo: { name: '프로야구', ic: '⚾', icon: 'icon-kbo', desc: 'KBO 선수·구단', c: '#1f2a5a' },
+  nonsense: { name: '넌센스', ic: '🤪', icon: 'icon-nonsense', desc: '머리를 말랑말랑', c: '#b57cff' },
+};
+const MAPCAT = { name: '지도에서 도시 찾기', ic: '🗺️', icon: 'icon-map', desc: '도시 위치를 콕! 가까울수록 고득점', c: '#ffd43b' };
+const STAMP_KEYS = [...Object.keys(CATS), 'map'];
+const catInfo = (k) => (k === 'map' ? MAPCAT : k === 'mix' ? { name: '전부 섞기', ic: '🌏', icon: 'icon-mix', desc: '모든 주제에서 골고루', c: '#3ddc97' } : k === 'wrong' ? { name: '오답 노트', ic: '📒', icon: 'icon-wrongnote' } : CATS[k]);
+const stampCount = () => STAMP_KEYS.filter((k) => save.stamps[k]).length;
+const isKing = () => stampCount() === STAMP_KEYS.length;
+function giveStamp(k) {
+  const first = !save.stamps[k];
+  save.stamps[k] = (save.stamps[k] || 0) + 1;
+  persist();
+  if (first && isKing()) setTimeout(() => celebrate('👑 퀴즈왕 등극!', '모든 여행지 도장을 모았어요!<br>정후는 이제 세계일주 퀴즈왕!'), 1400);
+}
+
 const COUNTRIES = (window.COUNTRIES || []);
 const CITIES = (window.CITIES || []);
 
@@ -69,13 +159,11 @@ function flagQuestions() {
     const near = pool.filter((x) => x.cont === c.cont);
     const w = shuffle(near.length >= 3 ? near : pool).slice(0, 3);
     out.push({ k: 'flag:' + c.iso, flag: c.f, q: '이 국기는 어느 나라일까?', a: c.n, w: w.map((x) => x.n), d: c.d, e: `${c.f} ${c.n}의 국기예요. 수도는 ${c.c || '-'}.` });
-    // 반대로: 나라 이름 보고 국기 고르기 (보기에 비슷한 대륙 국기)
     out.push({ k: 'flagr:' + c.iso, q: `${c.n}의 국기는 어느 것일까?`, a: c.f, w: w.map((x) => x.f), flags: true, d: Math.min(3, c.d + 1), e: `${c.f} 이게 ${c.n}의 국기예요.` });
   }
   return out;
 }
 function bankQuestions(cat) { return (QB.banks[cat] || []).map((x, i) => ({ ...x, k: `${cat}:${i}:${x.q.slice(0, 12)}` })); }
-
 function questionsFor(cat) {
   if (cat === 'capital') return countryQuestions();
   if (cat === 'flag') return flagQuestions();
@@ -97,53 +185,71 @@ function drawQuestions(list, n, diff) {
 }
 
 // ───────── 화면: 홈 ─────────
+const GREETINGS = [
+  '안녕! 나는 정후야. 오늘은 어디로 떠나볼까? ✈️',
+  '도장을 전부 모으면 퀴즈왕이 될 수 있어!',
+  '지도 게임에서 1000점 도전해 볼래?',
+  '틀린 문제는 오답 노트에 모아 뒀어!',
+  '비행기 안에서도 퀴즈는 계속된다!',
+  '이번엔 어려움(★★★)에 도전?',
+];
 function home() {
   const L = levelOf(save.xp);
-  const acc = save.answered ? Math.round((save.correct / save.answered) * 100) : 0;
+  const got = stampCount();
+  const ticket = (k, wide = false) => {
+    const c = catInfo(k);
+    const count = k === 'map' ? `최고 ${(save.mapBest.world || 0).toLocaleString()}점` : k === 'mix' ? '' : `${countFor(k)}문제`;
+    return `<button class="ticket card press ${wide ? 'wide' : ''}" data-cat="${k}" style="--c:${c.c}">
+      ${art(c.icon, c.ic)}<div><b>${c.name}</b><br><span>${c.desc}${count ? ' · ' + count : ''}</span></div>
+      ${save.stamps[k] ? '<i class="done">도장 ✔</i>' : ''}</button>`;
+  };
   $app.innerHTML = `
-    <div class="hero">
-      <div class="row"><h1>✈️ 정후의 비행 퀴즈</h1><span class="lv">Lv.${L.lv}</span></div>
-      <div class="bar"><i style="width:${(L.pct * 100).toFixed(0)}%"></i></div>
-      <small>${titleOf(L.lv)} · 다음 레벨까지 ${L.toNext}점 · 푼 문제 ${save.answered}개 · 정답률 ${acc}%</small>
+    <div class="logo"><small>JEONGHU'S WORLD TOUR</small><h1>정후의 <b>세계일주</b><br>퀴즈왕</h1></div>
+    <div class="hello">${isKing() ? JH.king() : JH.wave()}<div class="bubble">${pick(GREETINGS)}</div></div>
+    <div class="passport card">
+      <div class="row"><span class="lv">Lv.${L.lv} ${isKing() ? '👑 ' : ''}${rankOf(L.lv)}</span><span class="rank">🛂 도장 ${got}/${STAMP_KEYS.length}</span></div>
+      <div class="xp"><i style="width:${(L.pct * 100).toFixed(0)}%"></i></div>
+      <div class="stamps">${STAMP_KEYS.map((k) => { const c = catInfo(k); return `<div class="stamp-slot ${save.stamps[k] ? 'on' : ''}">${art(c.icon, c.ic)}${save.stamps[k] > 1 ? `<em>${save.stamps[k]}</em>` : ''}</div>`; }).join('')}</div>
+      <div class="goal">${isKing() ? '👑 세계일주 퀴즈왕! 도장을 더 모아 보자' : `70점 이상이면 도장 쾅! 모든 도장을 모으면 퀴즈왕 👑 · 다음 레벨까지 ${L.toNext}점`}</div>
     </div>
-    <div class="grid">
-      <button class="cat wide" data-go="map"><span class="ic">🗺️</span><div><b>지도에서 도시 찾기</b><br><span>도시 위치를 콕! 가까울수록 높은 점수</span></div></button>
-      ${Object.entries(CATS).map(([k, c]) => `
-        <button class="cat" data-cat="${k}"><span class="ic">${c.ic}</span><b>${c.name}</b><span>${c.desc} · ${countFor(k)}문제</span></button>`).join('')}
-      <button class="cat wide" data-cat="mix"><span class="ic">🎲</span><div><b>전부 섞기</b><br><span>모든 주제에서 골고루</span></div></button>
+    <div class="label">🎫 어디로 떠날까?</div>
+    <div class="tickets">
+      ${ticket('map', true)}
+      ${Object.keys(CATS).map((k) => ticket(k)).join('')}
+      ${ticket('mix', true)}
     </div>
-    <div class="section-title">나의 기록</div>
-    <div class="grid">
-      <button class="cat" data-go="wrong"><span class="ic">📒</span><b>오답 노트</b><span>틀린 문제 ${save.wrong.length}개 다시 풀기</span></button>
-      <button class="cat" data-go="stats"><span class="ic">🏆</span><b>기록 보기</b><span>최고 연속 정답 ${save.bestStreak}개</span></button>
+    <div class="label">🧳 내 가방</div>
+    <div class="tickets">
+      <button class="ticket card press" data-go="wrong" style="--c:var(--coral)">${art('icon-wrongnote', '📒')}<div><b>오답 노트</b><br><span>틀린 문제 ${save.wrong.length}개</span></div></button>
+      <button class="ticket card press" data-go="stats" style="--c:var(--sun)">${art('icon-trophy', '🏆')}<div><b>기록 보기</b><br><span>최고 연속 ${save.bestStreak}개</span></div></button>
     </div>`;
-  $app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => setup(b.dataset.cat)));
-  $app.querySelector('[data-go=map]').onclick = mapSetup;
-  $app.querySelector('[data-go=wrong]').onclick = () => (save.wrong.length ? startQuiz('wrong', 0, Math.min(10, save.wrong.length)) : toast('아직 틀린 문제가 없어요! 👍'));
-  $app.querySelector('[data-go=stats]').onclick = stats;
-  window.scrollTo(0, 0);
+  $app.querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => (b.dataset.cat === 'map' ? show(mapSetup) : show(() => setup(b.dataset.cat)))));
+  $app.querySelector('[data-go=wrong]').onclick = () => (save.wrong.length ? flyTo(() => startQuiz('wrong', 0, Math.min(10, save.wrong.length))) : toast('아직 틀린 문제가 없어요! 👍'));
+  $app.querySelector('[data-go=stats]').onclick = () => show(stats);
 }
 
 function topBar(title, right = '') {
-  return `<div class="top"><button class="back" data-back>‹</button><h1>${title}</h1>${right}</div>`;
+  return `<div class="top"><button class="back press" data-back aria-label="뒤로">‹</button><h1>${title}</h1>${right}</div>`;
 }
-function bindBack(fn = home) { const b = $app.querySelector('[data-back]'); if (b) b.onclick = fn; }
+function bindBack(fn = () => show(home)) { const b = $app.querySelector('[data-back]'); if (b) b.onclick = fn; }
+const quitBack = () => bindBack(() => { if (confirm('여행을 멈추고 처음으로 갈까요?')) show(home); });
 
 // ───────── 화면: 설정 ─────────
 function setup(cat) {
-  const c = cat === 'mix' ? { name: '전부 섞기', ic: '🎲' } : CATS[cat];
+  const c = catInfo(cat);
   let diff = 0, count = 10;
   const draw = () => {
-    $app.innerHTML = `${topBar(`${c.ic} ${c.name}`)}
-      <div class="section-title">난이도</div>
-      <div class="opts">${[0, 1, 2, 3].map((d) => `<button class="opt ${d === diff ? 'on' : ''}" data-d="${d}">${d ? stars(d) + ' ' : ''}${DIFF_NAME[d]}</button>`).join('')}</div>
-      <div class="section-title">문제 수</div>
-      <div class="opts">${[10, 20, 30].map((n) => `<button class="opt ${n === count ? 'on' : ''}" data-n="${n}">${n}문제</button>`).join('')}</div>
-      <button class="go">시작! 🛫</button>`;
+    $app.innerHTML = `${topBar('탑승 준비')}
+      <div class="setup-hero card">${art(c.icon, c.ic)}<div><b>${c.name}</b><span>${c.desc}</span></div></div>
+      <div class="label">난이도</div>
+      <div class="opts">${[0, 1, 2, 3].map((d) => `<button class="opt press ${d === diff ? 'on' : ''}" data-d="${d}">${d ? stars(d) + ' ' : ''}${DIFF_NAME[d]}</button>`).join('')}</div>
+      <div class="label">문제 수</div>
+      <div class="opts">${[10, 20, 30].map((n) => `<button class="opt press ${n === count ? 'on' : ''}" data-n="${n}">${n}문제</button>`).join('')}</div>
+      <button class="go press">출발! 🛫</button>`;
     bindBack();
     $app.querySelectorAll('[data-d]').forEach((b) => (b.onclick = () => { diff = +b.dataset.d; draw(); }));
     $app.querySelectorAll('[data-n]').forEach((b) => (b.onclick = () => { count = +b.dataset.n; draw(); }));
-    $app.querySelector('.go').onclick = () => startQuiz(cat, diff, count);
+    $app.querySelector('.go').onclick = () => flyTo(() => startQuiz(cat, diff, count));
   };
   draw();
 }
@@ -159,36 +265,39 @@ function startQuiz(cat, diff, count) {
   } else {
     qs = drawQuestions(questionsFor(cat).map((q) => ({ ...q, cat })), count, diff);
   }
-  if (!qs.length) { toast('문제가 아직 없어요'); return; }
-  const state = { cat, diff, qs, i: 0, results: [], streak: 0, gained: 0 };
-  showQuestion(state);
+  if (!qs.length) { toast('문제가 아직 없어요'); home(); return; }
+  showQuestion({ cat, diff, qs, i: 0, results: [], streak: 0, gained: 0 });
 }
 
 function showQuestion(st) {
   const q = st.qs[st.i];
   const opts = shuffle([q.a, ...q.w]);
-  const catName = q.cat && CATS[q.cat] ? `${CATS[q.cat].ic} ${CATS[q.cat].name}` : '';
-  $app.innerHTML = `${topBar(`${st.i + 1} / ${st.qs.length}`, `<span class="pill">🔥 ${st.streak} · ⭐ ${st.gained}</span>`)}
+  const c = q.cat && CATS[q.cat];
+  $app.innerHTML = `${topBar(`${st.i + 1} / ${st.qs.length}`, `<span class="chip">🔥${st.streak} ⭐${st.gained}</span>`)}
     <div class="progress">${st.qs.map((_, j) => `<i class="${j < st.i ? (st.results[j] ? 'ok' : 'no') : j === st.i ? 'now' : ''}"></i>`).join('')}</div>
-    <div class="qcard">
-      <div class="qmeta"><span>${catName}</span><span class="stars">${stars(q.d)}</span></div>
-      ${q.flag ? `<div class="big-flag">${q.flag}</div>` : ''}
-      <div class="q">${esc(q.q)}</div>
+    <div class="stage"><span id="who">${JH.think()}</span>
+      <div class="qcard card">
+        <div class="qmeta"><span>${c ? `${c.ic} ${c.name}` : ''}</span><span class="stars">${stars(q.d)}</span></div>
+        ${q.flag ? `<div class="big-flag">${q.flag}</div>` : ''}
+        <div class="q">${esc(q.q)}</div>
+      </div>
     </div>
-    <div class="choices ${q.flags ? 'flags' : ''}">${opts.map((o) => `<button class="choice ${q.flags ? 'flag' : ''}">${esc(o)}</button>`).join('')}</div>
+    <div class="choices ${q.flags ? 'flags' : ''}">${opts.map((o, i) => `<button class="choice press ${q.flags ? 'flag' : ''}">${q.flags ? '' : `<span class="k">${'ABCD'[i]}</span>`}<span>${esc(o)}</span></button>`).join('')}</div>
     <div id="fb"></div>`;
-  bindBack(() => { if (confirm('그만하고 처음으로 갈까요?')) home(); });
+  quitBack();
   const btns = [...$app.querySelectorAll('.choice')];
-  btns.forEach((b, idx) => (b.onclick = () => answer(st, q, opts[idx], btns, opts)));
+  btns.forEach((b, idx) => (b.onclick = () => answer(st, q, opts[idx], btns, opts, b)));
 }
 
-function answer(st, q, chosen, btns, opts) {
+function answer(st, q, chosen, btns, opts, el) {
   const ok = chosen === q.a;
   btns.forEach((b, idx) => {
     b.disabled = true;
     if (opts[idx] === q.a) b.classList.add('ok');
     else if (opts[idx] === chosen) b.classList.add('no');
+    else b.classList.add('dim');
   });
+  document.getElementById('who').innerHTML = ok ? JH.correct() : JH.wrong();
   st.results.push(ok);
   save.answered++;
   save.seen[q.k] = true;
@@ -203,72 +312,77 @@ function answer(st, q, chosen, btns, opts) {
     pc.ok++;
     save.bestStreak = Math.max(save.bestStreak, st.streak);
     if (st.cat === 'wrong') save.wrong = save.wrong.filter((w) => w.k !== q.k);
+    floaty(`+${gain}`, el);
+    if (st.streak >= 3 && st.streak % 3 === 0) { confetti(50); toast(`🔥 ${st.streak}연속 정답!`); }
   } else {
     st.streak = 0;
     if (!save.wrong.some((w) => w.k === q.k)) save.wrong.unshift({ k: q.k, q: q.q, a: q.a, w: q.w, d: q.d, e: q.e, flag: q.flag, flags: q.flags, cat: q.cat });
     save.wrong = save.wrong.slice(0, 300);
   }
-  const before = levelOf(save.xp).lv;
-  save.xp += gain;
+  addXp(gain);
   persist();
-  if (levelOf(save.xp).lv > before) toast(`🎉 레벨 업! Lv.${levelOf(save.xp).lv}`);
   const last = st.i === st.qs.length - 1;
   document.getElementById('fb').innerHTML = `
-    <div class="feedback ${ok ? 'ok' : 'no'}">
-      <b>${ok ? pick(['정답! 🎉', '맞았어요! 👏', '대단해요! 🌟', '역시! 😎']) + ` +${gain}` : `아쉬워요 😢 정답은 "${esc(q.a)}"`}</b>
+    <div class="feedback card ${ok ? 'ok' : 'no'}">
+      <b>${ok ? pick(['정답! 🎉', '맞았어! 👏', '대단해! 🌟', '역시 정후! 😎']) : `아깝다! 정답은 "${esc(q.a)}"`}</b>
       ${q.e ? esc(q.e) : ''}
     </div>
-    <button class="go">${last ? '결과 보기' : '다음 문제 ›'}</button>`;
+    <button class="go press ${ok ? 'mint' : ''}">${last ? '도착! 결과 보기 🛬' : '다음 문제 ›'}</button>`;
   const next = document.querySelector('#fb .go');
   next.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  next.onclick = () => { if (last) result(st); else { st.i++; showQuestion(st); } };
+  next.onclick = () => { if (last) flyTo(() => result(st)); else show(() => { st.i++; showQuestion(st); }); };
 }
 
 function result(st) {
   const n = st.results.filter(Boolean).length, t = st.results.length;
   const r = n / t;
-  const [emoji, msg] = r === 1 ? ['🏆', '완벽해요! 만점!'] : r >= 0.8 ? ['🥇', '엄청 잘했어요!'] : r >= 0.6 ? ['🥈', '잘했어요!'] : r >= 0.4 ? ['🥉', '좋아요, 조금만 더!'] : ['💪', '다음엔 더 잘할 수 있어요!'];
+  const pass = r >= 0.7 && STAMP_KEYS.includes(st.cat);
+  if (pass) giveStamp(st.cat);
+  const msg = r === 1 ? '완벽해! 만점이야!' : r >= 0.8 ? '엄청 잘했어!' : r >= 0.7 ? '도장 획득! 잘했어!' : r >= 0.4 ? '조금만 더 하면 도장!' : '다음엔 더 잘할 수 있어!';
+  const c = catInfo(st.cat);
   const wrongs = st.qs.filter((_, i) => !st.results[i]);
-  $app.innerHTML = `${topBar('결과')}
-    <div class="result">
-      <div class="emoji">${emoji}</div>
+  $app.innerHTML = `${topBar('여행 도착 🛬')}
+    <div class="pp-page card ${ASSETS['bg-passport'] ? 'has-img' : ''}" style="${ASSETS['bg-passport'] ? `--pp-img:url(${ASSETS['bg-passport']})` : ''}">
+      ${r >= 0.7 ? (r === 1 ? JH.king() : JH.correct()) : JH.wrong()}
       <h2>${t}문제 중 ${n}개 정답</h2>
       <p>${msg}</p>
-      <p>이번 판 점수 ⭐ ${st.gained}</p>
+      <p>이번 여행 점수 ⭐ ${st.gained}</p>
+      ${STAMP_KEYS.includes(st.cat) ? `<div class="stamp ${pass ? '' : 'miss'}">${art(c.icon, c.ic)}${pass ? `${c.name}<br>통과!` : '70점<br>도전!'}</div>` : ''}
     </div>
-    <button class="go" data-again>한 판 더! 🔁</button>
-    <button class="ghost" data-home>처음으로</button>
-    ${wrongs.length ? `<div class="section-title">틀린 문제 (오답 노트에 저장됨)</div>
+    <button class="go press" data-again>한 번 더 떠나기! 🔁</button>
+    <button class="ghost press" data-home>공항으로 (처음으로)</button>
+    ${wrongs.length ? `<div class="label">📒 틀린 문제 (오답 노트에 저장됨)</div>
     <div class="review">${wrongs.map((q) => `<div>${q.flag ? q.flag + ' ' : ''}${esc(q.q)}<br>→ <em>${esc(q.a)}</em></div>`).join('')}</div>` : ''}`;
+  if (r >= 0.8) setTimeout(() => confetti(r === 1 ? 160 : 90), 450);
   bindBack();
-  $app.querySelector('[data-home]').onclick = home;
-  $app.querySelector('[data-again]').onclick = () => (st.cat === 'wrong' && !save.wrong.length ? home() : startQuiz(st.cat, st.diff, st.qs.length));
-  window.scrollTo(0, 0);
+  $app.querySelector('[data-home]').onclick = () => show(home);
+  $app.querySelector('[data-again]').onclick = () => (st.cat === 'wrong' && !save.wrong.length ? show(home) : flyTo(() => startQuiz(st.cat, st.diff, st.qs.length)));
 }
 
 // ───────── 화면: 기록 ─────────
 function stats() {
   const rows = Object.entries(CATS).map(([k, c]) => {
     const p = save.perCat[k] || { n: 0, ok: 0 };
-    return `<div><span>${c.ic} ${c.name}</span><b>${p.n ? Math.round((p.ok / p.n) * 100) + '%' : '-'} <small>(${p.ok}/${p.n})</small></b></div>`;
+    return `<div><span>${c.ic} ${c.name} ${save.stamps[k] ? '🛂' + save.stamps[k] : ''}</span><b>${p.n ? Math.round((p.ok / p.n) * 100) + '%' : '-'} <small>(${p.ok}/${p.n})</small></b></div>`;
   }).join('');
   const L = levelOf(save.xp);
   $app.innerHTML = `${topBar('🏆 기록')}
     <div class="stat-list">
-      <div><span>레벨</span><b>Lv.${L.lv} ${titleOf(L.lv)}</b></div>
-      <div><span>총 점수</span><b>${save.xp}</b></div>
+      <div><span>레벨</span><b>Lv.${L.lv} ${rankOf(L.lv)}</b></div>
+      <div><span>총 점수</span><b>${save.xp.toLocaleString()}</b></div>
+      <div><span>푼 문제 / 정답률</span><b>${save.answered}개 / ${save.answered ? Math.round((save.correct / save.answered) * 100) : 0}%</b></div>
       <div><span>최고 연속 정답</span><b>${save.bestStreak}개</b></div>
-      <div><span>🗺️ 세계 지도 최고점</span><b>${save.mapBest.world || 0}</b></div>
-      <div><span>🗺️ 한국 지도 최고점</span><b>${save.mapBest.kr || 0}</b></div>
+      <div><span>🗺️ 세계 지도 최고점</span><b>${(save.mapBest.world || 0).toLocaleString()}</b></div>
+      <div><span>🗺️ 한국 지도 최고점</span><b>${(save.mapBest.kr || 0).toLocaleString()}</b></div>
     </div>
-    <div class="section-title">주제별 정답률</div>
+    <div class="label">주제별 정답률</div>
     <div class="stat-list">${rows}</div>
-    <button class="ghost" data-reset>기록 모두 지우기</button>`;
+    <button class="ghost press" data-reset>기록 모두 지우기</button>`;
   bindBack();
   $app.querySelector('[data-reset]').onclick = () => {
     if (confirm('정말 모든 기록을 지울까요? 되돌릴 수 없어요.')) {
-      Object.assign(save, { xp: 0, answered: 0, correct: 0, bestStreak: 0, seen: {}, wrong: [], perCat: {}, mapBest: {} });
-      persist(); home();
+      Object.assign(save, { xp: 0, answered: 0, correct: 0, bestStreak: 0, seen: {}, wrong: [], perCat: {}, mapBest: {}, stamps: {} });
+      persist(); show(home);
     }
   };
 }
@@ -284,27 +398,24 @@ function haversine(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
+const cityList = (region) => CITIES.filter((c) => c.r === region).map((c) => ({ ...c, k: `city:${region}:${c.n}:${c.co}` }));
 
 function mapSetup() {
   let region = 'world', diff = 0;
   const draw = () => {
     const n = CITIES.filter((c) => c.r === region && (!diff || c.d === diff)).length;
-    $app.innerHTML = `${topBar('🗺️ 지도에서 도시 찾기')}
-      <p class="hint">도시 이름이 나오면 지도에서 그 위치를 톡 누르고 [확인]! 실제 위치와 가까울수록 점수가 높아요 (한 문제 최대 1000점).</p>
-      <div class="section-title">지도</div>
-      <div class="opts">${Object.entries(REGIONS).map(([k, r]) => `<button class="opt ${k === region ? 'on' : ''}" data-r="${k}">${r.ic} ${r.name}</button>`).join('')}</div>
-      <div class="section-title">난이도</div>
-      <div class="opts">${[0, 1, 2, 3].map((d) => `<button class="opt ${d === diff ? 'on' : ''}" data-d="${d}">${d ? stars(d) + ' ' : ''}${DIFF_NAME[d]}</button>`).join('')}</div>
-      <p class="hint">도시 ${n}곳 · 최고 점수 ${save.mapBest[region] || 0}</p>
-      <button class="go" ${n ? '' : 'disabled'}>시작! 🛫</button>`;
+    $app.innerHTML = `${topBar('탑승 준비')}
+      <div class="setup-hero card">${JH.explorer()}<div><b>${MAPCAT.name}</b><span>도시 이름이 나오면 지도에서 위치를 톡! 누르고 [확인]. 가까울수록 점수가 높아요 (한 도시 최대 1000점).</span></div></div>
+      <div class="label">지도</div>
+      <div class="opts">${Object.entries(REGIONS).map(([k, r]) => `<button class="opt press ${k === region ? 'on' : ''}" data-r="${k}">${r.ic} ${r.name}</button>`).join('')}</div>
+      <div class="label">난이도</div>
+      <div class="opts">${[0, 1, 2, 3].map((d) => `<button class="opt press ${d === diff ? 'on' : ''}" data-d="${d}">${d ? stars(d) + ' ' : ''}${DIFF_NAME[d]}</button>`).join('')}</div>
+      <p class="hint">도시 ${n}곳 · 최고 점수 ${(save.mapBest[region] || 0).toLocaleString()} · 7,000점 이상이면 도장!</p>
+      <button class="go press" ${n ? '' : 'disabled'}>출발! 🛫</button>`;
     bindBack();
     $app.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => { region = b.dataset.r; draw(); }));
     $app.querySelectorAll('[data-d]').forEach((b) => (b.onclick = () => { diff = +b.dataset.d; draw(); }));
-    $app.querySelector('.go').onclick = () => {
-      const list = CITIES.filter((c) => c.r === region).map((c) => ({ ...c, k: `city:${region}:${c.n}:${c.co}` }));
-      const cities = drawQuestions(list, REGIONS[region].rounds, diff);
-      mapRound({ region, diff, cities, i: 0, total: 0, log: [] });
-    };
+    $app.querySelector('.go').onclick = () => flyTo(() => mapRound({ region, diff, cities: drawQuestions(cityList(region), REGIONS[region].rounds, diff), i: 0, total: 0, log: [] }));
   };
   draw();
 }
@@ -315,19 +426,21 @@ function mapRound(st) {
   const land = window.MAP_DATA || { world: [], korea: [] };
   const paths = land.world.map((d) => `<path class="land" d="${d}"/>`).join('')
     + (st.region === 'kr' ? land.korea.map((d) => `<path class="land kr" d="${d}"/>`).join('') : '');
-  const label = st.region === 'kr' ? city.n : `${city.n} <small class="hint">(${city.co})</small>`;
-  $app.innerHTML = `${topBar(`${st.i + 1} / ${st.cities.length}`, `<span class="pill">⭐ ${st.total}</span>`)}
-    <div class="qcard" style="padding:14px 18px;margin-bottom:10px">
-      <div class="qmeta"><span>${R.ic} ${R.name} 지도</span><span class="stars">${stars(city.d)}</span></div>
-      <div class="maptarget">📍 ${label}</div>
+  const label = st.region === 'kr' ? esc(city.n) : `${esc(city.n)} <small>(${esc(city.co)})</small>`;
+  $app.innerHTML = `${topBar(`${st.i + 1} / ${st.cities.length}`, `<span class="chip">⭐ ${st.total.toLocaleString()}</span>`)}
+    <div class="stage"><span id="who">${JH.explorer()}</span>
+      <div class="qcard card">
+        <div class="qmeta"><span>${R.ic} ${R.name} 지도</span><span class="stars">${stars(city.d)}</span></div>
+        <div class="maptarget">📍 ${label}</div>
+      </div>
     </div>
     <div class="mapwrap">
       <svg preserveAspectRatio="xMidYMid meet"><g id="world" transform="scale(${R.kx},1)">${paths}<g id="marks"></g></g></svg>
-      <div class="zoom"><button data-z="in">+</button><button data-z="out">−</button></div>
+      <div class="zoom"><button data-z="in" aria-label="확대">+</button><button data-z="out" aria-label="축소">−</button></div>
     </div>
     <div id="mapfb"></div>
-    <div class="maprow"><button class="go" id="confirm" disabled>위치를 눌러 주세요</button></div>`;
-  bindBack(() => { if (confirm('그만하고 처음으로 갈까요?')) home(); });
+    <button class="go press" id="confirm" disabled>지도에서 위치를 눌러 줘</button>`;
+  quitBack();
 
   const svg = $app.querySelector('svg'), g = svg.querySelector('#world'), marks = svg.querySelector('#marks');
   // 보이는 영역(viewBox)은 변환 후 좌표 기준
@@ -340,7 +453,7 @@ function mapRound(st) {
   const toVB = (cx, cy) => { const p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(svg.getScreenCTM().inverse()); };
 
   let guess = null, done = false;
-  const pinR = () => 7 / pxPerUnit(); // 확대해도 화면에서 항상 비슷한 크기
+  const pinR = () => 8 / pxPerUnit(); // 확대해도 화면에서 항상 비슷한 크기
   // g 가 가로로 kx 배 줄어 있으니 rx 를 늘려서 동그랗게 보이게 한다
   function pin(cls, lon, lat) { return `<ellipse class="${cls}" cx="${lon}" cy="${-lat}" rx="${pinR() / R.kx}" ry="${pinR()}"/>`; }
   function redraw() {
@@ -388,7 +501,7 @@ function mapRound(st) {
     if (pointers.size === 0 && !moved && !done) {
       guess = toMap(e.clientX, e.clientY);
       redraw();
-      const c = document.getElementById('confirm'); c.disabled = false; c.textContent = '확인! 📍';
+      const c = document.getElementById('confirm'); c.disabled = false; c.textContent = '여기야! 확인 📍';
     }
     if (pointers.size === 0) downAt = null;
   };
@@ -401,7 +514,7 @@ function mapRound(st) {
 
   document.getElementById('confirm').onclick = function () {
     if (done) {
-      if (st.i === st.cities.length - 1) mapResult(st); else { st.i++; mapRound(st); }
+      if (st.i === st.cities.length - 1) flyTo(() => mapResult(st)); else show(() => { st.i++; mapRound(st); });
       return;
     }
     done = true;
@@ -410,10 +523,8 @@ function mapRound(st) {
     st.total += pts;
     st.log.push({ city, km, pts });
     save.seen[city.k] = true;
-    const gain = Math.round(pts / 50);
-    save.xp += gain;
+    addXp(Math.round(pts / 50));
     persist();
-    redraw();
     // 두 점이 다 보이게 화면 이동
     const xs = [guess.lon, city.lon].map((x) => x * R.kx), ys = [-guess.lat, -city.lat];
     const pad = Math.max(home0[2] / 20, (Math.max(...xs) - Math.min(...xs)) * 0.4, (Math.max(...ys) - Math.min(...ys)) * 0.4);
@@ -423,10 +534,12 @@ function mapRound(st) {
     const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
     vb = [cx - (home0[2] * s) / 2, cy - (home0[3] * s) / 2, home0[2] * s, home0[3] * s];
     setVB(); redraw();
+    document.getElementById('who').innerHTML = pts >= 300 ? JH.correct() : JH.wrong();
+    if (pts >= 900) confetti(60);
     const dist = km < 1 ? '1km 이내' : `${Math.round(km).toLocaleString()}km`;
-    const cheer = pts >= 900 ? '거의 정확해요! 🎯' : pts >= 600 ? '아주 가까워요! 👏' : pts >= 300 ? '괜찮아요! 🙂' : '조금 멀었어요 😅';
-    document.getElementById('mapfb').innerHTML = `<div class="feedback ${pts >= 300 ? 'ok' : 'no'}"><b>${cheer} +${pts}점</b>실제 위치(빨간 점)와 ${dist} 떨어졌어요.</div>`;
-    this.textContent = st.i === st.cities.length - 1 ? '결과 보기' : '다음 도시 ›';
+    const cheer = pts >= 900 ? '거의 정확해! 🎯' : pts >= 600 ? '아주 가까워! 👏' : pts >= 300 ? '괜찮아! 🙂' : '조금 멀었어 😅';
+    document.getElementById('mapfb').innerHTML = `<div class="feedback card ${pts >= 300 ? 'ok' : 'no'}"><b>${cheer} +${pts}점</b>실제 위치(빨간 점)와 ${dist} 떨어졌어요.</div>`;
+    this.textContent = st.i === st.cities.length - 1 ? '도착! 결과 보기 🛬' : '다음 도시 ›';
   };
 }
 
@@ -437,25 +550,24 @@ function mapResult(st) {
   const isBest = st.total > best;
   if (isBest) { save.mapBest[st.region] = st.total; persist(); }
   const r = st.total / max;
-  const emoji = r >= 0.85 ? '🏆' : r >= 0.65 ? '🥇' : r >= 0.45 ? '🥈' : '🧭';
-  $app.innerHTML = `${topBar('결과')}
-    <div class="result">
-      <div class="emoji">${emoji}</div>
+  const pass = r >= 0.7;
+  if (pass) giveStamp('map');
+  $app.innerHTML = `${topBar('여행 도착 🛬')}
+    <div class="pp-page card ${ASSETS['bg-passport'] ? 'has-img' : ''}" style="${ASSETS['bg-passport'] ? `--pp-img:url(${ASSETS['bg-passport']})` : ''}">
+      ${pass ? JH.king() : JH.explorer()}
       <h2>${st.total.toLocaleString()}점</h2>
       <p>${R.ic} ${R.name} 지도 · 만점 ${max.toLocaleString()}점</p>
       <p>${isBest ? '🎉 새 최고 기록!' : `최고 기록 ${best.toLocaleString()}점`}</p>
+      <div class="stamp ${pass ? '' : 'miss'}">${art(MAPCAT.icon, MAPCAT.ic)}${pass ? '지도<br>통과!' : '7,000점<br>도전!'}</div>
     </div>
-    <button class="go" data-again>한 판 더! 🔁</button>
-    <button class="ghost" data-home>처음으로</button>
-    <div class="section-title">도시별 결과</div>
+    <button class="go press" data-again>한 번 더 떠나기! 🔁</button>
+    <button class="ghost press" data-home>공항으로 (처음으로)</button>
+    <div class="label">도시별 결과</div>
     <div class="review">${st.log.map((l) => `<div>${esc(l.city.n)} <small class="hint">${esc(l.city.co)}</small><br><em>${l.pts}점</em> · ${Math.round(l.km).toLocaleString()}km 차이</div>`).join('')}</div>`;
+  if (isBest || pass) setTimeout(() => confetti(), 450);
   bindBack();
-  $app.querySelector('[data-home]').onclick = home;
-  $app.querySelector('[data-again]').onclick = () => {
-    const list = CITIES.filter((c) => c.r === st.region).map((c) => ({ ...c, k: `city:${st.region}:${c.n}:${c.co}` }));
-    mapRound({ region: st.region, diff: st.diff, cities: drawQuestions(list, R.rounds, st.diff), i: 0, total: 0, log: [] });
-  };
-  window.scrollTo(0, 0);
+  $app.querySelector('[data-home]').onclick = () => show(home);
+  $app.querySelector('[data-again]').onclick = () => flyTo(() => mapRound({ region: st.region, diff: st.diff, cities: drawQuestions(cityList(st.region), R.rounds, st.diff), i: 0, total: 0, log: [] }));
 }
 
-home();
+show(home);
