@@ -13,7 +13,7 @@ const save = {
   stages: {},        // 왕국 스테이지 id → 별 개수 (1~3)
   bonus: {},         // ? 블록 첫 보상 받았는지
   coins: 0,
-  items: { half: 1, pass: 1, heart: 1, clock: 1 },
+  items: { half: 1, pass: 1, heart: 1, clock: 1, hint: 2, owl: 1, shield: 1, boost: 1, magnet: 1, dice: 2 }, // 새 아이템은 기존 저장에도 기본 개수로 지급
   rides: ['plane'],  // 가진 탈것
   ride: 'plane',     // 타고 있는 탈것
   sound: true,

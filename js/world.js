@@ -159,8 +159,12 @@ function stageInfo(w, k) {
   const mixNote = CATS[w.cat] ? `${CATS[w.cat].name} 절반 + 여러 주제 섞어서` : '모든 주제 섞어서';
   if (k === 'B') return { kind: 'bonus', title: `${w.id}-? 보너스`, desc: `45초 스피드 퀴즈! ${mixNote}. 맞힐 때마다 코인을 받아요.`, diffs: adaptDiffs([2]) };
   if (k === 'C') {
-    const hp = w.cat === 'map' ? 4500 : hard ? 12 : 8;
-    return { kind: 'boss', title: `${w.id}-🏰 ${w.boss.name}`, desc: w.cat === 'map' ? `도시 위치를 맞혀서 보스의 HP ${hp.toLocaleString()}을 깎아라!` : `문제를 맞혀서 보스의 HP ${hp}을 깎아라! 문제마다 20초 제한, 하트 3개.`, diffs, hp };
+    const hp = w.cat === 'map' ? 4500 : hard ? 20 : w.id <= 2 ? 14 : 16; // 크리티컬·필살기가 있어서 약 7~10문제 대결
+    return {
+      kind: 'boss', title: `${w.id}-🏰 ${w.boss.name}`, diffs, hp,
+      desc: w.cat === 'map' ? `도시 위치를 맞혀서 보스의 HP ${hp.toLocaleString()}을 깎아라!`
+        : `보스 HP ${hp}! 문제마다 20초 · 하트 3개.<br>⚡ 5초 안에 맞히면 크리티컬(2배) · 3번 맞히면 필살기(+2)<br>HP가 절반이 되면 보스가 화내요!`,
+    };
   }
   if (w.cat === 'map') {
     const region = { 1: 'kr', 2: 'world', 3: 'kr', 4: 'world', 5: null }[k];
@@ -191,12 +195,12 @@ function stageQuestions(w, info, n) {
   return themedQuestions(w.cat, n, info.diffs); // 월드 주제 절반 + 다른 주제 절반
 }
 
-function playStage(w, k) {
+async function playStage(w, k) {
   $app.classList.remove('on-map');
   document.getElementById('ui').innerHTML = '';
   const info = stageInfo(w, k);
-  const id = sid(w, k);
   const quit = () => toMap();
+  if (info.kind === 'boss') { $app.innerHTML = ''; await vsIntro(w.boss); } // 정후 VS 보스 등장
   if (info.kind === 'bonus') {
     return runQuiz({
       title: `${w.id}-? 보너스`, qs: stageQuestions(w, info, 80), speed: 45, items: false,
@@ -208,7 +212,7 @@ function playStage(w, k) {
       ? drawQuestions(cityList(), 8, info.diffs)
       : drawQuestions(cityList(info.region), 5, info.diffs);
     return runMap({
-      title: info.kind === 'boss' ? `${w.id}-🏰 보스전` : `스테이지 ${info.title}`, cities, boss: info.kind === 'boss' ? { ...w.boss, hp: info.hp } : null,
+      title: info.kind === 'boss' ? `🏰 ${w.id}-보스` : `스테이지 ${info.title}`, cities, boss: info.kind === 'boss' ? { ...w.boss, hp: info.hp } : null,
       onQuit: quit,
       onEnd: (r) => {
         const avg = r.total / Math.max(1, r.log.length);
@@ -219,7 +223,7 @@ function playStage(w, k) {
   }
   const boss = info.kind === 'boss' ? { ...w.boss, hp: info.hp } : null;
   runQuiz({
-    title: boss ? `${w.id}-🏰 보스전` : `스테이지 ${info.title}`,
+    title: boss ? `🏰 ${w.id}-보스` : `스테이지 ${info.title}`,
     qs: stageQuestions(w, info, boss ? info.hp + 5 : 8),
     hearts: 3, boss, timer: boss ? 20 : null,
     onQuit: quit,
