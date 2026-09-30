@@ -8,9 +8,12 @@ const SCREENS = {
   intro: async () => { toMap(); await wait(300); stageIntro(WORLDS[0], '1'); },
   quiz: () => playStage(WORLDS[2], '1'),
   flagQuiz: () => { document.getElementById('ui').innerHTML = ''; runQuiz({ title: '🚩 국기', qs: flagQuestions().filter((q) => q.flags).slice(0, 3), hearts: 3, onEnd() {}, onQuit() {} }); },
-  vs: async () => { playStage(WORLDS[7], 'C'); await wait(900); },
-  boss: async () => { playStage(WORLDS[7], 'C'); await wait(3200); },
-  mapBoss: async () => { playStage(WORLDS[6], 'C'); await wait(3200); },
+  cut: async () => { playStage(WORLDS[7], 'C'); await wait(2600); },
+  vs: async () => { playStage(WORLDS[7], 'C'); await wait(4300); },
+  quizMap: () => { document.getElementById('ui').innerHTML = ''; runQuiz({ title: '스테이지 1-1', qs: [mapQuestion(cityList('world')[0])], hearts: 3, onEnd() {}, onQuit() {} }); },
+  titleResume: () => { save.run = { id: '3-2', kind: 'quiz', state: { i: 5, qs: Array(8).fill({}) } }; title(); },
+  boss: async () => { playStage(WORLDS[7], 'C'); await wait(7000); },
+  mapBoss: async () => { playStage(WORLDS[6], 'C'); await wait(7000); },
   speed: () => playStage(WORLDS[1], 'B'),
   mapGame: () => playStage(WORLDS[6], '1'),
   result: () => stageResult(WORLDS[2], '2', { cleared: true, stars: 3, correct: 8, wrong: 0, total: 8, coins: 12, maxStreak: 8, qs: [], results: [] }),
@@ -19,7 +22,7 @@ const SCREENS = {
   freeSetup: () => show(() => freeSetup('history')),
   stats: () => goto(stats),
 };
-const SKIP = '.flyby, .deco, canvas, svg *, .band, .fog, .kingdom, .road, .toast, .floaty';
+const SKIP = '.cut-warn, .flyby, .deco, canvas, svg *, .band, .fog, .kingdom, .road, .toast, .floaty';
 
 function check() {
   const W = innerWidth, issues = [];

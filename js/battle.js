@@ -52,24 +52,90 @@ function say(text, ms = 2200) { // 보스 말풍선
 
 // VS 등장 화면. 눌러서 건너뛸 수 있다
 function vsIntro(boss) {
+  // 1) 경고 사이렌 → 2) 보스 그림자가 쿵 떨어짐 → 3) 번쩍! 정체 공개 + 이름표 → 4) 정후 VS 보스
+  // 화면을 누르면 다음 장면으로 건너뛴다.
   return new Promise((resolve) => {
     if (reduced) return resolve();
     const L = bossLines(boss);
+    const worldNo = (boss.img || '').replace('boss-', '');
     const o = document.createElement('div');
-    o.className = 'vs-screen';
+    o.className = 'cut';
+    const warn = '⚠ WARNING ⚠ 보스 등장 ⚠ WARNING ⚠ 보스 등장 '.repeat(3);
     o.innerHTML = `
-      <div class="vs-side me">${JH.wave()}<b>정후</b></div>
-      <div class="vs-side foe">${art(boss.img, boss.emoji, 'bossimg')}<b>${boss.name}</b></div>
-      <div class="vs-text">VS</div>
-      <div class="vs-line">“${L.start}”</div>
-      <div class="vs-go">대결 시작!</div>`;
+      <div class="cut-warn top"><span>${warn}</span></div><div class="cut-warn bot"><span>${warn}</span></div>
+      <div class="cut-title">보스 등장!</div>
+      <div class="cut-boss">${art(boss.img, boss.emoji, 'bossimg')}</div>
+      <div class="cut-plate"><small>WORLD ${worldNo} BOSS</small><b>${boss.name}</b></div>
+      <div class="cut-flash"></div>`;
     document.body.appendChild(o);
-    sfx('step'); setTimeout(() => sfx('hit'), 550); setTimeout(() => sfx('power'), 1900);
-    let done = false;
-    const finish = () => { if (done) return; done = true; o.classList.add('out'); setTimeout(() => { o.remove(); resolve(); }, 250); };
-    o.onclick = finish;
-    setTimeout(finish, 2700);
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    let stage = 0, done = false;
+    const toVs = () => {
+      if (stage >= 4) return;
+      stage = 4; timers.forEach(clearTimeout); timers.length = 0;
+      o.className = 'vs-screen';
+      o.innerHTML = `
+        <div class="vs-side me">${JH.wave()}<b>정후</b></div>
+        <div class="vs-side foe">${art(boss.img, boss.emoji, 'bossimg')}<b>${boss.name}</b></div>
+        <div class="vs-text">VS</div>
+        <div class="vs-line">“${L.start}”</div>
+        <div class="vs-go">대결 시작!</div>`;
+      sfx('step'); at(550, () => { sfx('hit'); buzz(40); }); at(1900, () => sfx('power'));
+      at(2800, finish);
+    };
+    const finish = () => { if (done) return; done = true; timers.forEach(clearTimeout); o.classList.add('out'); setTimeout(() => { o.remove(); resolve(); }, 250); };
+    o.onclick = () => (stage < 4 ? toVs() : finish());
+    // 장면 1: 경고
+    o.classList.add('p1'); sfx('siren'); at(500, () => sfx('siren'));
+    // 장면 2: 그림자 낙하
+    at(1100, () => { stage = 2; o.classList.add('p2'); });
+    at(1550, () => { sfx('thud'); buzz(80); o.classList.add('quake'); });
+    // 장면 3: 공개
+    at(2200, () => { stage = 3; o.classList.add('p3'); sfx('roar'); buzz([40, 30, 40]); });
+    // 장면 4: VS
+    at(3700, toVs);
   });
+}
+
+// K.O. 연출: 번쩍번쩍(맞는 순간 멈칫) → 뒤로 털썩 쓰러짐 → 머리 위 💫 → 되찾은 지식 별이 정후에게 → 식세븐!
+function koEffect(bossEl, meEl, L) {
+  const artEl = bossEl.querySelector('.boss-art');
+  artEl.classList.add('ko');
+  const arena = document.getElementById('arena') || bossEl;
+  arena.insertAdjacentHTML('beforeend', '<div class="ko-text">K.O.!</div>');
+  say(L.ko, 4200);
+  sfx('hit'); buzz([100, 50, 140]);
+  // 💫 는 쓰러진 몸과 같이 돌아가지 않도록 바깥(부모)에 붙인다
+  setTimeout(() => { if (artEl.isConnected) { artEl.parentElement.insertAdjacentHTML('beforeend', '<span class="dizzy">💫</span>'); burst(artEl, '💨', ''); sfx('thud'); shake(); } }, 1150);
+  const who = meEl && (meEl.querySelector ? meEl.querySelector('#who') || meEl : meEl);
+  [0, 1, 2].forEach((i) => setTimeout(() => {
+    if (!artEl.isConnected) return;
+    shoot(artEl, who, '⭐', { big: i === 2 }).then(() => sfx('coin'));
+  }, 1200 + i * 220));
+  setTimeout(() => { if (artEl.isConnected) { toast('⭐ 지식 별을 되찾았다!'); sfx('clear'); confetti(120); sikseven(who); } }, 2000);
+}
+
+// 정후의 승리 외침: 식세븐~!
+function sikseven(anchor) {
+  if (!anchor || !anchor.isConnected) return;
+  const r = anchor.getBoundingClientRect();
+  const b = document.createElement('div');
+  b.className = 'sik';
+  b.innerHTML = '식세븐~! <span>🤲</span>';
+  b.style.left = `${(r.left + r.width / 2) / Z}px`;
+  b.style.top = `${Math.max(40, r.top) / Z}px`;
+  document.body.appendChild(b);
+  setTimeout(() => b.remove(), 2000);
+  seq([784, 988, 784, 1319], 0.08, { type: 'triangle', vol: 0.08 });
+  // 기기에 한국어 음성이 있으면 소리 내어 외치기 (없으면 조용히 넘어감)
+  try {
+    if (save.sound && 'speechSynthesis' in window && speechSynthesis.getVoices().some((v) => v.lang.startsWith('ko'))) {
+      const u = new SpeechSynthesisUtterance('식세븐!');
+      u.lang = 'ko-KR'; u.rate = 1.1; u.pitch = 1.6;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    }
+  } catch (e) { /* 음성 없음 */ }
 }
 
 // 초성 힌트: 이순신 → ㅇㅅㅅ (한글이 아닌 글자는 그대로)

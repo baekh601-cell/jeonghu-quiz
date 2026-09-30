@@ -21,12 +21,20 @@ const save = {
   speedBest: 0,
   story: false,      // 첫 이야기 봤는지
   recent: [],        // 최근 정답 여부 (난이도 자동 조정용)
+  run: null,         // 하던 스테이지 (이어하기용): { id, kind, state }
 };
 try {
   const old = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
   Object.assign(save, old, { items: { ...save.items, ...(old.items || {}) } });
 } catch (e) { /* 저장소 없음 */ }
 function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(save)); } catch (e) { /* 무시 */ } }
+// 저장이 실제로 되는 브라우저인지 확인 (일부 앱 속 브라우저·비공개 모드는 저장이 안 되거나 닫으면 지워짐)
+const STORAGE_OK = (() => { try { localStorage.setItem('jq-test', '1'); const ok = localStorage.getItem('jq-test') === '1'; localStorage.removeItem('jq-test'); return ok; } catch (e) { return false; } })();
+// 브라우저가 저장 공간이 부족할 때 기록을 지우지 않도록 요청
+try { navigator.storage?.persist?.(); } catch (e) { /* 무시 */ }
+// 앱을 닫거나 다른 앱으로 넘어갈 때도 한 번 더 저장
+addEventListener('pagehide', persist);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persist(); });
 
 // ───────── 유틸 ─────────
 const $app = document.getElementById('app');
@@ -109,8 +117,22 @@ const SFX = {
   fever: () => seq([784, 988, 1175, 1568], 0.06),
   tick: () => tone(1200, 0.03, { vol: 0.03 }),
   unlock: () => seq([659, 0, 659, 784, 1047], 0.08),
+  siren: () => { tone(880, 0.22, { type: 'square', vol: 0.05 }); tone(660, 0.22, { type: 'square', vol: 0.05, at: 0.22 }); },
+  thud: () => { tone(90, 0.35, { type: 'sine', vol: 0.2, slide: 0.5 }); tone(60, 0.3, { type: 'triangle', vol: 0.12, at: 0.02 }); },
+  roar: () => { tone(220, 0.6, { type: 'sawtooth', vol: 0.07, slide: 0.45 }); tone(147, 0.7, { type: 'square', vol: 0.05, at: 0.05, slide: 0.5 }); },
 };
 function sfx(name) { try { SFX[name] && SFX[name](); } catch (e) { /* 소리 실패는 무시 */ } }
+// 진동 (안드로이드). 소리 끄기(🔇)를 하면 진동도 꺼진다
+function buzz(pattern) { try { if (save.sound && navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* 무시 */ } }
+// 게임하는 동안 화면이 꺼지지 않게
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => (wakeLock = null)); }
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { /* 지원 안 함 */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && save.run) keepAwake(true); });
 document.addEventListener('pointerdown', () => audio(), { once: true });
 
 // ───────── 화면 크기 맞추기 (폰·폴드·태블릿) ─────────
@@ -199,7 +221,11 @@ function addXp(gain) {
   const before = levelOf(save.xp).lv;
   save.xp += gain;
   const after = levelOf(save.xp).lv;
-  if (after > before) setTimeout(() => celebrate(`레벨 업! Lv.${after}`, `이제 정후는 <b>${rankOf(after)}</b>!`), 600);
+  if (after <= before) return;
+  const newRank = rankOf(after) !== rankOf(before);
+  // 문제 푸는 중에는 화면을 가리지 않게 알림만, 새 호칭을 얻었을 때만 축하 창
+  if (newRank) setTimeout(() => celebrate(`레벨 업! Lv.${after}`, `새 호칭 획득! 이제 정후는 <b>${rankOf(after)}</b>!`), document.querySelector('.qa') ? 3200 : 600);
+  else setTimeout(() => { toast(`🎉 레벨 업! Lv.${after}`); sfx('unlock'); }, 400);
 }
 function addCoins(n, el) {
   if (!n) return;

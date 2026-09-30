@@ -412,8 +412,8 @@ body.wide .result-screen > .label, body.wide .result-screen > .review { grid-col
 .gauge i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--navy); background: #fff; }
 .gauge i.on { background: var(--sun); box-shadow: 0 0 6px var(--sun); }
 .gauge span { margin-left: 2px; white-space: nowrap; }
-.boss-art.ko { animation: ko 1.2s cubic-bezier(.4, 0, .6, 1) forwards !important; }
-@keyframes ko { 30% { transform: translateY(-30px) rotate(-200deg) scale(1.1); } 100% { transform: translate(60px, -160px) rotate(-720deg) scale(.2); opacity: 0; } }
+
+
 .ko-text { position: absolute; inset: 0; display: grid; place-items: center; font-size: 64px; color: var(--sun); -webkit-text-stroke: 2px var(--navy); text-shadow: 4px 4px 0 var(--navy); animation: slam .5s cubic-bezier(.2, 1.6, .4, 1) both; pointer-events: none; }
 .taunt { position: absolute; bottom: 100%; right: 0; z-index: 3; min-width: 120px; max-width: 190px; background: #fff; border: var(--edge); border-radius: 14px; padding: 6px 10px; font-size: 14px; line-height: 1.3; text-align: left;
   opacity: 0; transform: translateY(6px) scale(.9); transition: opacity .2s, transform .2s; pointer-events: none; box-shadow: 0 3px 0 var(--navy); }
@@ -469,3 +469,60 @@ body.wide .arena .fighter.me .who { width: 110px; height: 110px; }
   .vs-mark { font-size: 20px; }
   .item { font-size: 12px; min-width: 54px; }
 }
+/* ═════════ K.O. : 번쩍번쩍 → 뒤로 털썩 → 머리 위 💫 ═════════ */
+.boss-art { position: relative; }
+.boss-art.ko { transform-origin: 50% 95%; animation: koHit .45s linear, koFall .8s .45s cubic-bezier(.35, 0, .7, 1) forwards !important; }
+@keyframes koHit { 0%, 40%, 80% { filter: brightness(4) saturate(0); transform: scale(1.08); } 20%, 60%, 100% { filter: none; transform: none; } }
+@keyframes koFall { 0% { transform: none; } 25% { transform: translateY(-12px) rotate(-6deg); } 100% { transform: translateY(14px) rotate(80deg) scale(.95); filter: grayscale(.45) brightness(.92); } }
+.dizzy { position: absolute; left: 50%; top: 18%; z-index: 4; font-size: 30px; pointer-events: none; animation: dizzy 1s linear infinite; }
+@keyframes dizzy { from { transform: translateX(-50%) rotate(0deg) translateX(22px) rotate(0deg); } to { transform: translateX(-50%) rotate(360deg) translateX(22px) rotate(-360deg); } }
+
+/* ═════════ 보스 등장 컷신 ═════════ */
+.cut { position: fixed; inset: 0; z-index: 70; overflow: hidden; cursor: pointer; background: radial-gradient(ellipse at 50% 60%, #3a1f5a, #0e0820 72%); }
+.cut.quake { animation: shake .45s; }
+.cut-warn { position: absolute; left: 0; right: 0; height: 46px; overflow: hidden; opacity: 0; background: repeating-linear-gradient(-45deg, #ffd43b 0 20px, #1f2a5a 20px 40px); border-top: 3px solid #000; border-bottom: 3px solid #000; }
+.cut-warn.top { top: 10%; } .cut-warn.bot { bottom: 10%; }
+.cut-warn span { position: absolute; top: 50%; left: 0; white-space: nowrap; font-size: 20px; color: #fff; background: #e8262688; padding: 2px 0; animation: warnScroll 4s linear infinite; }
+.cut-warn.bot span { animation-direction: reverse; }
+@keyframes warnScroll { from { transform: translate(0, -50%); } to { transform: translate(-50%, -50%); } }
+.cut.p1 .cut-warn { opacity: 1; }
+.cut-title { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 52px; color: #ff4d4d; -webkit-text-stroke: 2px #fff; text-shadow: 0 0 24px #ff0000aa; white-space: nowrap; opacity: 0; }
+.cut.p1 .cut-title { opacity: 1; animation: blink .28s steps(1) 4; }
+.cut.p2 .cut-title { opacity: 0; }
+@keyframes blink { 50% { opacity: 0; } }
+.cut-boss { position: absolute; left: 50%; top: 44%; opacity: 0; transform: translate(-50%, -170%); }
+.cut-boss .bossimg { display: block; width: min(calc(62vw / var(--z, 1)), 300px); height: min(calc(62vw / var(--z, 1)), 300px); font-size: min(calc(44vw / var(--z, 1)), 210px); filter: brightness(0) drop-shadow(0 0 18px #ff3b3b); transform: scaleX(-1); }
+.cut.p2 .cut-boss { opacity: 1; animation: bossDrop .45s cubic-bezier(.55, 0, 1, .45) forwards; }
+@keyframes bossDrop { from { transform: translate(-50%, -170%); } to { transform: translate(-50%, -50%); } }
+.cut-boss::after { content: '💨      💨'; position: absolute; left: 50%; bottom: -6px; font-size: 44px; white-space: pre; opacity: 0; transform: translateX(-50%); }
+.cut.p2 .cut-boss::after { animation: dust .7s .42s both; }
+@keyframes dust { 0% { opacity: 0; transform: translateX(-50%) scale(.3); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) scale(1.7); } }
+.cut.p3 .cut-boss .bossimg { filter: drop-shadow(0 0 22px #ffd43b); transition: filter .12s; animation: roarShake .07s linear 9; }
+@keyframes roarShake { 50% { transform: scaleX(-1) translate(4px, -2px) scale(1.04); } }
+.cut-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.cut.p3 .cut-flash { animation: flash .55s ease-out; }
+@keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+.cut-plate { position: absolute; left: 50%; bottom: 20%; transform: translate(-50%, 40px); opacity: 0; text-align: center; white-space: nowrap; }
+.cut-plate small { display: block; color: var(--sun); letter-spacing: 4px; font-size: 16px; }
+.cut-plate b { display: inline-block; font-weight: 400; font-size: 34px; color: #fff; -webkit-text-stroke: 1px var(--navy); text-shadow: 3px 3px 0 var(--navy); background: linear-gradient(90deg, transparent, #ff6b6b 14%, #ff6b6b 86%, transparent); padding: 4px 44px; }
+.cut.p3 .cut-plate { opacity: 1; transform: translate(-50%, 0); transition: transform .4s cubic-bezier(.2, 1.4, .4, 1) .15s, opacity .2s .15s; }
+
+/* ═════════ 식세븐~! ═════════ */
+.sik { position: fixed; z-index: 58; pointer-events: none; white-space: nowrap; background: var(--sun); border: var(--edge); border-radius: 18px; padding: 6px 16px; font-size: 28px; box-shadow: var(--lift);
+  transform: translate(-50%, -100%); animation: sikPop 2s cubic-bezier(.3, 1.6, .5, 1) forwards; }
+.sik::after { content: ''; position: absolute; left: 50%; top: 100%; margin-left: -9px; border: 9px solid transparent; border-top-color: var(--navy); }
+.sik span { display: inline-block; animation: sikHands .28s ease-in-out infinite alternate; }
+@keyframes sikHands { from { transform: translateY(-5px) rotate(-12deg); } to { transform: translateY(5px) rotate(12deg); } }
+@keyframes sikPop { 0% { transform: translate(-50%, -60%) scale(.3); opacity: 0; } 14% { transform: translate(-50%, -112%) scale(1.15); opacity: 1; } 24% { transform: translate(-50%, -100%) scale(1); } 82% { opacity: 1; } 100% { transform: translate(-50%, -135%); opacity: 0; } }
+
+/* ═════════ 타이틀: 이어하기 / 다시하기 ═════════ */
+.go.big small { display: block; font-size: 15px; text-shadow: none; opacity: .95; }
+.title-screen .ghost { max-width: 360px; }
+.linkbtn { color: var(--muted); text-decoration: underline; font-size: 15px; margin-top: 4px; }
+.warnbox { background: #fff3c4; border: 2px solid #e0a800; border-radius: 12px; padding: 8px 12px; font-size: 14px; max-width: 360px; }
+
+/* ═════════ 퀴즈 속 지도 문제 ═════════ */
+.progress i.mapq { border-style: dashed; }
+.quizmap { min-height: calc(46vh / var(--z, 1)); }
+#mapok { margin-top: 12px; }
+body.wide .qa.has-map .quizmap { flex: none; min-height: 260px; height: calc(100vh / var(--z, 1) - 190px); }

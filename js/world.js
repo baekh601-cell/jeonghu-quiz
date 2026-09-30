@@ -11,14 +11,18 @@ const WORLDS = [
   { id: 7, name: '탐험 정글', cat: 'map', ic: '🌴', sky: '#c6f0c0', ground: '#56b870', deco: ['🌴', '🐒', '🦜', '🗿', '🍌'], boss: { name: '정글 대왕뱀 스르륵', emoji: '🐍', img: 'boss-7' } },
   { id: 8, name: '모르쇠 대왕의 성', cat: 'mix', ic: '🏰', sky: '#d9ccff', ground: '#8f7ad8', deco: ['🏰', '⚡', '🦇', '💎', '🔮'], boss: { name: '모르쇠 대왕', emoji: '😈', img: 'boss-8' } },
 ];
-const STAGE_KEYS = ['1', '2', '3', 'B', '4', '5', 'C'];
+// 월드마다 스테이지 8개 + ? 보너스 + 보스 성
+const STAGE_KEYS = ['1', '2', '3', 'B', '4', '5', '6', '7', '8', 'C'];
+const PREV = { 2: '1', 3: '2', B: '3', 4: '3', 5: '4', 6: '5', 7: '6', 8: '7', C: '8' };
+const REGULAR = STAGE_KEYS.filter((k) => k !== 'B');
 // 스테이지별 기본 난이도 (1 쉬움 · 2 보통 · 3 어려움). 정후 수준에 맞춰 처음부터 보통 이상.
 // 실제로는 adaptDiffs() 가 최근 정답률에 따라 한 단계 올리거나 내린다.
-const STAGE_DIFF = { 1: [2], 2: [2], 3: [2, 3], 4: [2, 3], 5: [3], C: [2, 3] }; // 월드 1~2
-const MID_DIFF = { 1: [2, 3], 2: [2, 3], 3: [3], 4: [3], 5: [3], C: [3] };    // 월드 3~6
-const HARD_DIFF = { 1: [3], 2: [3], 3: [3], 4: [3], 5: [3], C: [3] };         // 월드 8
-const MAP_DIFF = { 1: [1, 2], 2: [2], 3: [2, 3], 4: [2, 3], 5: [3], C: [2, 3] }; // 월드 7 (도시 난이도)
-const TOTAL_STARS = WORLDS.length * 6 * 3;
+const STAGE_DIFF = { 1: [2], 2: [2], 3: [2, 3], 4: [2, 3], 5: [2, 3], 6: [3], 7: [3], 8: [3], C: [2, 3] }; // 월드 1~2
+const MID_DIFF = { 1: [2, 3], 2: [2, 3], 3: [2, 3], 4: [3], 5: [3], 6: [3], 7: [3], 8: [3], C: [3] };     // 월드 3~6
+const HARD_DIFF = { 1: [3], 2: [3], 3: [3], 4: [3], 5: [3], 6: [3], 7: [3], 8: [3], C: [3] };            // 월드 8
+const MAP_DIFF = { 1: [1, 2], 2: [2], 3: [2, 3], 4: [2, 3], 5: [2, 3], 6: [3], 7: [3], 8: [3], C: [2, 3] }; // 월드 7 (도시 난이도)
+const MAP_REGION = { 1: 'kr', 2: 'world', 3: 'kr', 4: 'world', 5: null, 6: 'kr', 7: 'world', 8: null };
+const TOTAL_STARS = WORLDS.length * REGULAR.length * 3;
 
 // ───────── 진행 상태 ─────────
 const sid = (w, k) => `${w.id}-${k}`;
@@ -26,8 +30,7 @@ const cleared = (w, k) => !!save.stages[sid(w, k)];
 function unlocked(w, k) {
   const wi = WORLDS.indexOf(w);
   if (k === '1') return wi === 0 || cleared(WORLDS[wi - 1], 'C');
-  const prev = { 2: '1', 3: '2', B: '3', 4: '3', 5: '4', C: '5' }[k];
-  return cleared(w, prev);
+  return cleared(w, PREV[k]);
 }
 function currentNode() { // 정후가 서 있을 자리: 아직 안 깬 첫 스테이지
   for (const w of WORLDS) for (const k of STAGE_KEYS) if (k !== 'B' && unlocked(w, k) && !cleared(w, k)) return sid(w, k);
@@ -38,7 +41,7 @@ const worldOf = (id) => WORLDS.find((w) => w.id === +id.split('-')[0]);
 
 // ───────── 월드맵 ─────────
 const NODE_GAP = 100, WORLD_GAP = 150;
-const XS = [70, 78, 62, 42, 24, 30, 52]; // 스테이지별 가로 위치 (%)
+const XS = [70, 80, 64, 44, 24, 20, 36, 58, 76, 52]; // 스테이지별 가로 위치 (%) — 지그재그 길
 function layout() {
   const nodes = [];
   let y = 190; // 아래 메뉴에 가리지 않게
@@ -167,10 +170,10 @@ function stageInfo(w, k) {
     };
   }
   if (w.cat === 'map') {
-    const region = { 1: 'kr', 2: 'world', 3: 'kr', 4: 'world', 5: null }[k];
+    const region = MAP_REGION[k];
     return { kind: 'map', title: `${w.id}-${k}`, desc: `${region === 'kr' ? '🇰🇷 대한민국' : region === 'world' ? '🌍 세계' : '🇰🇷+🌍 섞어서'} 도시 5곳. 평균 300점 이상이면 클리어!`, diffs, region };
   }
-  return { kind: 'quiz', title: `${w.id}-${k}`, desc: `문제 8개 (${mixNote}) · 하트 3개. 3번 틀리면 실패!`, diffs };
+  return { kind: 'quiz', title: `${w.id}-${k}`, desc: `문제 8개 (${mixNote} + 🗺️ 지도 찾기 1문제) · 하트 3개. 3번 틀리면 실패!`, diffs };
 }
 
 async function stageIntro(w, k) {
@@ -185,36 +188,53 @@ async function stageIntro(w, k) {
     <p class="intro-cat">${catName} · 난이도 ${info.diffs.map((d) => stars(d)).join(' ~ ')}</p>
     <p>${info.desc}</p>
     ${best && info.kind !== 'bonus' ? `<p>최고 기록 ${'⭐'.repeat(best)}${'☆'.repeat(3 - best)}</p>` : ''}
-    <button class="go press" data-v="go">${info.kind === 'boss' ? '보스에게 도전! ⚔️' : '출발! 🏁'}</button>
+    ${save.run && save.run.id === sid(w, k) ? `<button class="go press" data-v="resume">▶ 하던 데서 이어하기 (${save.run.state.i + 1}번째 문제)</button>` : ''}
+    <button class="${save.run && save.run.id === sid(w, k) ? 'ghost' : 'go'} press" data-v="go">${info.kind === 'boss' ? '보스에게 도전! ⚔️' : '출발! 🏁'}</button>
     <button class="ghost press" data-v="no">지도로</button>`);
+  if (v === 'resume') resumeRun();
   if (v === 'go') flyTo(() => playStage(w, k));
 }
 
-function stageQuestions(w, info, n) {
-  if (w.cat === 'mix' || w.cat === 'map') return mixedQuestions(n, info.diffs);
-  return themedQuestions(w.cat, n, info.diffs); // 월드 주제 절반 + 다른 주제 절반
+// 지도 문제 n개를 섞어 넣는다 (첫 문제는 피해서)
+function withMapQuestions(qs, n, diffs) {
+  const cities = drawQuestions(cityList(Math.random() < 0.4 ? 'kr' : 'world'), n, diffs.map((d) => Math.min(3, d)));
+  const out = qs.slice(0, qs.length - n);
+  cities.forEach((c) => out.splice(2 + rnd(Math.max(1, out.length - 1)), 0, mapQuestion(c)));
+  return out;
+}
+function stageQuestions(w, info, n, boss) {
+  const base = w.cat === 'mix' || w.cat === 'map' ? mixedQuestions(n, info.diffs) : themedQuestions(w.cat, n, info.diffs); // 월드 주제 절반 + 다른 주제 절반
+  if (info.kind === 'bonus') return base;
+  return withMapQuestions(base, boss ? 2 : 1, info.diffs); // 🗺️ 지도 찾기가 중간중간 등장
 }
 
-async function playStage(w, k) {
+// 하던 스테이지 저장/삭제 (이어하기)
+const saveRun = (w, k, kind, state) => { save.run = { id: sid(w, k), kind, state }; persist(); };
+const clearRun = () => { save.run = null; persist(); keepAwake(false); };
+
+async function playStage(w, k, resume) {
   $app.classList.remove('on-map');
   document.getElementById('ui').innerHTML = '';
+  keepAwake(true);
   const info = stageInfo(w, k);
-  const quit = () => toMap();
-  if (info.kind === 'boss') { $app.innerHTML = ''; await vsIntro(w.boss); } // 정후 VS 보스 등장
+  const quit = () => { keepAwake(false); toMap(); }; // 나가도 save.run 은 남겨서 이어하기 가능
+  if (info.kind === 'boss' && !resume) { $app.innerHTML = ''; await vsIntro(w.boss); } // 보스 등장 컷신
   if (info.kind === 'bonus') {
     return runQuiz({
       title: `${w.id}-? 보너스`, qs: stageQuestions(w, info, 80), speed: 45, items: false,
-      onQuit: quit, onEnd: (r) => stageResult(w, k, { ...r, cleared: true, stars: 1 }),
+      onQuit: quit, onEnd: (r) => { clearRun(); stageResult(w, k, { ...r, cleared: true, stars: 1 }); },
     });
   }
   if (w.cat === 'map') {
-    const cities = info.kind === 'boss'
+    const cities = resume ? resume.cities : info.kind === 'boss'
       ? drawQuestions(cityList(), 8, info.diffs)
       : drawQuestions(cityList(info.region), 5, info.diffs);
     return runMap({
       title: info.kind === 'boss' ? `🏰 ${w.id}-보스` : `스테이지 ${info.title}`, cities, boss: info.kind === 'boss' ? { ...w.boss, hp: info.hp } : null,
+      resume, onSnapshot: (s) => saveRun(w, k, 'map', s),
       onQuit: quit,
       onEnd: (r) => {
+        clearRun();
         const avg = r.total / Math.max(1, r.log.length);
         const s = info.kind === 'boss' ? (r.cleared ? (avg >= 700 ? 3 : avg >= 600 ? 2 : 1) : 0) : avg >= 700 ? 3 : avg >= 500 ? 2 : avg >= 300 ? 1 : 0;
         stageResult(w, k, { cleared: s > 0, stars: s, coins: 0, map: r });
@@ -224,14 +244,28 @@ async function playStage(w, k) {
   const boss = info.kind === 'boss' ? { ...w.boss, hp: info.hp } : null;
   runQuiz({
     title: boss ? `🏰 ${w.id}-보스` : `스테이지 ${info.title}`,
-    qs: stageQuestions(w, info, boss ? info.hp + 5 : 8),
+    qs: resume ? resume.qs : stageQuestions(w, info, boss ? info.hp + 6 : 8, !!boss),
     hearts: 3, boss, timer: boss ? 20 : null,
+    resume, onSnapshot: (s) => saveRun(w, k, 'quiz', s),
     onQuit: quit,
     onEnd: (r) => {
+      clearRun();
       const s = !r.cleared ? 0 : boss ? r.heartsLeft : Math.max(1, 3 - r.wrong);
       stageResult(w, k, { ...r, stars: s });
     },
   });
+}
+function resumeRun() {
+  const run = save.run;
+  if (!run) return;
+  const w = worldOf(run.id), k = run.id.split('-')[1];
+  flyTo(() => playStage(w, k, run.state));
+}
+// 깬 뒤 바로 이어서 할 다음 스테이지 (보너스는 건너뜀)
+function nextStageOf(w, k) {
+  const i = STAGE_KEYS.indexOf(k);
+  for (let j = i + 1; j < STAGE_KEYS.length; j++) if (STAGE_KEYS[j] !== 'B') return { w, k: STAGE_KEYS[j] };
+  return null;
 }
 
 async function stageResult(w, k, r) {
@@ -247,6 +281,9 @@ async function stageResult(w, k, r) {
   if (info.kind === 'boss' && r.cleared) save.bosses++;
   addCoins(bonus);
   persist();
+  // 일반 스테이지를 깼으면 지도로 안 돌아가고 바로 다음 스테이지로 갈 수 있다 (보스 성 직전까지)
+  const nx = r.cleared && info.kind !== 'boss' && info.kind !== 'bonus' ? nextStageOf(w, k) : null;
+  const quickNext = nx && nx.k !== 'C' && unlocked(nx.w, nx.k) ? nx : null;
 
   const title = !r.cleared ? (info.kind === 'boss' ? '보스에게 졌어…' : '아쉽다!') : info.kind === 'boss' ? '보스 격파!' : info.kind === 'bonus' ? '보너스 끝!' : '스테이지 클리어!';
   const who = !r.cleared ? JH.wrong() : info.kind === 'boss' ? JH.king() : JH.correct();
@@ -261,18 +298,21 @@ async function stageResult(w, k, r) {
       ${info.kind !== 'bonus' ? `<div class="bigstars">${[1, 2, 3].map((i) => `<span class="${r.cleared && i <= r.stars ? 'on' : ''}" style="animation-delay:${0.3 + i * 0.25}s">★</span>`).join('')}</div>` : ''}
       <p>${statLine}</p>
       <div class="coinline">🪙 +${(r.coins || 0) + bonus} ${bonus ? `<small>(클리어 보너스 ${bonus}${firstClear ? ', 첫 클리어!' : ''})</small>` : ''}</div>
-      ${r.cleared ? '' : `<p class="hint">${info.kind === 'map' ? '평균 300점을 넘으면 클리어!' : '상점에서 ❤️ 하트나 🌓 반반 아이템을 사 가면 쉬워져요.'}</p>`}
-      <button class="go press" data-a="${r.cleared ? 'next' : 'retry'}">${r.cleared ? '지도로 🗺️' : '다시 도전! 🔁'}</button>
-      <button class="ghost press" data-a="${r.cleared ? 'retry' : 'map'}">${r.cleared ? '한 번 더 하기' : '지도로'}</button>
+      ${r.cleared ? '' : `<p class="hint">${info.kind === 'map' ? '평균 300점을 넘으면 클리어!' : '상점에서 ❤️ 하트나 🛡️ 방패 아이템을 사 가면 쉬워져요.'}</p>`}
+      ${quickNext ? `<button class="go press" data-a="quick">다음 스테이지 ${quickNext.w.id}-${quickNext.k} ▶</button>` : ''}
+      <button class="${quickNext ? 'ghost' : 'go'} press" data-a="${r.cleared ? 'next' : 'retry'}">${r.cleared ? '지도로 🗺️' : '다시 도전! 🔁'}</button>
+      <button class="ghost press" data-a="${r.cleared ? 'retry' : 'map'}">${r.cleared ? '한 번 더 하기 🔁' : '지도로'}</button>
       ${r.qs && r.results ? wrongReview(r) : ''}
     </div>`;
   if (r.cleared) {
     sfx('clear');
     if (!reduced) [1, 2, 3].forEach((i) => i <= r.stars && setTimeout(() => sfx('coin'), 300 + i * 250 + 100));
     setTimeout(() => confetti(r.stars === 3 ? 140 : 70), 350);
+    if (info.kind !== 'bonus') setTimeout(() => sikseven($app.querySelector('.result-screen > .who')), 900);
   } else sfx('fail');
 
   const again = () => flyTo(() => playStage(w, k));
+  $app.querySelector('[data-a=quick]')?.addEventListener('click', () => { sfx('tap'); flyTo(() => playStage(quickNext.w, quickNext.k)); });
   const back = async () => {
     if (info.kind === 'bonus' && r.cleared && !save.bonus[id]) { save.bonus[id] = 1; persist(); await openChest(false); }
     if (info.kind === 'boss' && firstClear) {
@@ -320,13 +360,30 @@ async function ending() {
 // ───────── 타이틀 ─────────
 function title() {
   $app.classList.remove('on-map');
+  const run = save.run;
+  const runLabel = run ? (() => {
+    const w = worldOf(run.id), k = run.id.split('-')[1];
+    const n = run.state.qs ? run.state.qs.length : run.state.cities.length;
+    return `${k === 'C' ? `🏰 ${w.id}-보스` : `스테이지 ${run.id}`} (${run.state.i + 1}/${n}번째 문제부터)`;
+  })() : '';
+  const started = Object.keys(save.stages).length || run;
   $app.innerHTML = `
     <div class="title-screen">
       <div class="logo"><small>JEONGHU'S QUIZ KINGDOM</small><h1>정후의<br><b>퀴즈 왕국</b></h1></div>
       <div class="title-hero">${save.bosses >= WORLDS.length ? JH.king() : JH.wave()}<span class="ride big">${rideIcon()}</span></div>
-      <button class="go press big" data-start>${Object.keys(save.stages).length ? '이어서 모험하기 ▶' : '모험 시작! ▶'}</button>
+      ${run ? `<button class="go press big" data-resume>▶ 이어하기<small>${runLabel}</small></button>` : ''}
+      <button class="${run ? 'ghost' : 'go big'} press" data-start>${started ? '🗺️ 왕국 지도로' : '모험 시작! ▶'}</button>
       <p class="hint">⭐ ${totalStars()}/${TOTAL_STARS} · 🪙 ${save.coins.toLocaleString()} · Lv.${levelOf(save.xp).lv} ${rankOf(levelOf(save.xp).lv)}</p>
+      ${started ? '<button class="linkbtn" data-restart>처음부터 다시하기</button>' : ''}
+      ${STORAGE_OK ? '' : '<p class="warnbox">⚠️ 이 브라우저에서는 기록이 저장되지 않아요.<br>Chrome이나 삼성 인터넷에서 열고, 홈 화면에 추가해서 써 주세요.</p>'}
     </div>`;
+  $app.querySelector('[data-resume]')?.addEventListener('click', () => { sfx('power'); resumeRun(); });
+  $app.querySelector('[data-restart]')?.addEventListener('click', async () => {
+    const v = await modal('<h2>처음부터 다시할까?</h2><p>별, 코인, 아이템, 레벨이 전부 사라지고 월드 1부터 다시 시작해요. 되돌릴 수 없어요!</p><button class="go press" data-v="no">아니, 계속할래</button><button class="ghost press" data-v="yes">처음부터 다시하기</button>');
+    if (v !== 'yes') return;
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 무시 */ }
+    location.reload();
+  });
   $app.querySelector('[data-start]').onclick = async () => {
     sfx('power');
     if (!save.story) {
@@ -485,7 +542,7 @@ function stats() {
   }).join('');
   const worlds = WORLDS.map((w) => {
     const s = STAGE_KEYS.filter((k) => k !== 'B').reduce((a, k) => a + (save.stages[sid(w, k)] || 0), 0);
-    return `<div><span>${w.ic} ${w.id}. ${w.name}</span><b>${cleared(w, 'C') ? '🏳️ ' : ''}⭐ ${s}/18</b></div>`;
+    return `<div><span>${w.ic} ${w.id}. ${w.name}</span><b>${cleared(w, 'C') ? '🏳️ ' : ''}⭐ ${s}/${REGULAR.length * 3}</b></div>`;
   }).join('');
   const L = levelOf(save.xp);
   $app.innerHTML = `${topBar('🏆 기록')}
