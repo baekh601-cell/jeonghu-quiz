@@ -1,4 +1,6 @@
-# ✈️ 정후의 비행 퀴즈
+# ✈️ 정후의 세계일주 퀴즈왕
+
+**앱 주소: https://baekh601-cell.github.io/jeonghu-quiz/**
 
 비행기 안(인터넷 없음)에서 오래 즐길 수 있는 오프라인 퀴즈 웹앱.
 
@@ -19,4 +21,5 @@
 - 빌드 도구 없는 순수 HTML/CSS/JS. 로컬 실행: `npx http-server . -p 5173`
 - 문제 추가: `data/*.js` 에 `{q, a, w:[오답 3개], d:1~3, e:'해설'}` 형식으로 추가
 - 지도 데이터 재생성: `npm install && npm run build:map` (Natural Earth, 퍼블릭 도메인)
-- 파일을 바꾸면 `sw.js` 의 `VERSION` 을 올려야 설치된 앱이 새 버전을 받는다.
+- 이미지: `assets/raw/` 에 PNG 업로드 → `npm run build:assets` 가 WebP 로 변환 (프롬프트: `docs/asset-prompts.md`)
+- main 에 push 하면 GitHub Actions 가 이미지 변환 후 GitHub Pages 로 자동 배포하고, 캐시 버전도 자동으로 바뀐다.
