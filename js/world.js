@@ -81,7 +81,7 @@ function kingdom(opts = {}) {
     const cls = n.k === 'C' ? 'castle' : n.k === 'B' ? 'qblock' : 'dot';
     const label = n.k === 'C' ? art(n.w.boss.img, '🏰', 'nodeimg') : n.k === 'B' ? '?' : `${n.w.id}-${n.k}`;
     return `<button class="node ${cls} ${open ? 'open' : 'locked'} ${s ? 'done' : ''} ${n.id === cur ? 'cur' : ''}" data-node="${n.id}" style="left:${n.x}%;top:${toTop(n.y)}px">
-      <span class="face">${n.k === 'C' ? (s ? '🏳️' : '🏰') : label}</span>
+      <span class="face">${n.k === 'C' ? (s ? '🏳️' : open ? label : '🏰') : label}</span>
       ${n.k !== 'B' && s ? `<span class="nstars">${'⭐'.repeat(s)}</span>` : ''}
       ${n.k === 'B' && s ? '<span class="nstars">✔</span>' : ''}
     </button>`;

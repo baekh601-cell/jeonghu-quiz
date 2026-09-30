@@ -245,7 +245,7 @@ canvas.confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
 .node.qblock.locked .face { background: #c9ced9; animation: none; }
 .node.qblock.done .face { background: #b88444; }
 @keyframes qbob { 50% { transform: translateY(-6px); } }
-.nodeimg { width: 64px; height: 64px; }
+.nodeimg { width: 68px; height: 68px; font-size: 44px; animation: bossIdle 1.6s ease-in-out infinite; }
 .hero-pin { position: absolute; z-index: 5; transform: translate(-50%, -100%); margin-top: -18px; transition: left .9s ease-in-out, top .9s ease-in-out; pointer-events: none; display: flex; align-items: flex-end; }
 .hero-pin .who { width: 64px; height: 64px; font-size: 46px; animation: bob 1.4s ease-in-out infinite; }
 .hero-pin .ride { font-size: 30px; margin-right: -10px; animation: bob 1.4s .3s ease-in-out infinite; }
