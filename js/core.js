@@ -112,6 +112,25 @@ const SFX = {
 function sfx(name) { try { SFX[name] && SFX[name](); } catch (e) { /* 소리 실패는 무시 */ } }
 document.addEventListener('pointerdown', () => audio(), { once: true });
 
+// ───────── 화면 크기 맞추기 (폰·폴드·태블릿) ─────────
+// 레이아웃은 폰(약 400px 폭) 기준으로 짜여 있고, 큰 화면에서는 통째로 확대한다.
+// 가로로 넓은 화면(태블릿 가로, 폴드 펼침 가로)은 문제와 보기를 좌우 두 칸으로 나눈다.
+let Z = 1;
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; // 새로 열 때 예전 스크롤 위치로 덮어쓰지 않게
+function fitScreen() {
+  const w = innerWidth, h = innerHeight;
+  const wide = w >= 700 && w > h * 1.05;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  Z = wide ? clamp(Math.min(w / 1040, h / 640), 1, 1.45) : clamp(Math.min(w / 440, h / 700), 1, 1.6);
+  Z = Math.round(Z * 100) / 100;
+  document.body.style.zoom = Z === 1 ? '' : Z;
+  document.documentElement.style.setProperty('--z', Z);
+  document.body.classList.toggle('wide', wide);
+}
+fitScreen();
+let fitTimer;
+addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitScreen, 120); }); // 폴드를 접고 펼 때도
+
 // ───────── 모션 ─────────
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function show(render) { // 화면 전환: 새 화면이 톡 튀어 오른다
@@ -157,7 +176,7 @@ function confetti(n = 90) {
 function floaty(text, el, cls = '') {
   const r = el.getBoundingClientRect();
   const f = document.createElement('div'); f.className = 'floaty ' + cls; f.innerHTML = text;
-  f.style.left = `${r.left + r.width / 2 - 20}px`; f.style.top = `${r.top}px`;
+  f.style.left = `${(r.left + r.width / 2) / Z - 20}px`; f.style.top = `${r.top / Z}px`; // 화면 좌표 → 확대 전 좌표
   document.body.appendChild(f); setTimeout(() => f.remove(), 1000);
 }
 function shake() { if (reduced) return; document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); }

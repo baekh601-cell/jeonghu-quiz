@@ -63,7 +63,8 @@ function runQuiz(cfg) {
     const itemBar = cfg.items === false ? '' : `<div class="itembar">${Object.entries(ITEMS)
       .filter(([k]) => (k !== 'heart' || st.hearts !== null) && (k !== 'clock' || cfg.timer))
       .map(([k, it]) => `<button class="item press" data-item="${k}" ${save.items[k] ? '' : 'disabled'}><span>${it.ic}</span>${it.name}<em>${save.items[k] || 0}</em></button>`).join('')}</div>`;
-    $app.innerHTML = `${hud()}${progress}${bossBox}
+    // .qa-l(문제) / .qa-r(보기): 넓은 가로 화면에서는 좌우 두 칸, 그 외에는 위아래
+    $app.innerHTML = `${hud()}<div class="qa"><div class="qa-l">${progress}${bossBox}
       <div class="stage"><span id="who">${JH.think()}</span>
         <div class="qcard card">
           <div class="qmeta"><span>${c ? `${c.ic} ${c.name}` : ''}${cfg.speed ? '' : ` · ${st.i + 1}/${cfg.qs.length}`}</span><span class="stars">${stars(q.d)}</span></div>
@@ -71,12 +72,14 @@ function runQuiz(cfg) {
           <div class="q">${esc(q.q)}</div>
         </div>
       </div>
-      ${cfg.timer ? '<div class="timer"><i id="tbar"></i></div>' : ''}
-      <div class="choices ${q.flags ? 'flags' : ''}">${opts.map((o, i) => `<button class="choice press ${q.flags ? 'flag' : ''}" data-i="${i}">${q.flags ? '' : `<span class="k">${'ABCD'[i]}</span>`}<span>${esc(o)}</span></button>`).join('')}</div>
+      ${cfg.timer ? '<div class="timer"><i id="tbar"></i></div>' : ''}</div>
+      <div class="qa-r"><div class="choices ${q.flags ? 'flags' : ''}">${opts.map((o, i) => `<button class="choice press ${q.flags ? 'flag' : ''}" data-i="${i}">${q.flags ? '' : `<span class="k">${'ABCD'[i]}</span>`}<span>${esc(o)}</span></button>`).join('')}</div>
       ${itemBar}
-      <div id="fb"></div>`;
+      <div id="fb"></div></div></div>`;
     bindBack(async () => {
+      st.paused = true; // 고민하는 동안 타이머 멈춤
       const v = await modal(`<h2>그만할까?</h2><p>지금 나가면 이 스테이지는 처음부터 다시 해야 해요.</p><button class="go press" data-v="stay">계속하기</button><button class="ghost press" data-v="quit">나가기</button>`);
+      st.paused = false;
       if (v === 'quit') { st.over = true; clearInterval(st.timerId); clearInterval(st.speedId); persist(); cfg.onQuit(); }
     });
     const btns = [...$app.querySelectorAll('.choice')];
@@ -90,7 +93,8 @@ function runQuiz(cfg) {
     st.left = cfg.timer; st.frozen = false;
     const bar = document.getElementById('tbar');
     st.timerId = setInterval(() => {
-      if (st.frozen) return;
+      if (!bar || !bar.isConnected) return clearInterval(st.timerId); // 화면이 바뀌었으면 멈춤
+      if (st.frozen || st.paused) return;
       st.left -= 0.1;
       if (bar) { bar.style.width = `${Math.max(0, st.left / cfg.timer) * 100}%`; bar.classList.toggle('low', st.left < 4); }
       if (st.left <= 3 && Math.abs(st.left - Math.round(st.left)) < 0.05) sfx('tick');
@@ -126,7 +130,7 @@ function runQuiz(cfg) {
   }
 
   function answer(q, chosen, btns, opts, el) {
-    if (st.over || btns[0].dataset.done) return;
+    if (st.over || btns[0].dataset.done || !btns[0].isConnected) return;
     btns.forEach((b) => (b.dataset.done = 1));
     clearInterval(st.timerId);
     const ok = chosen === q.a;
@@ -212,6 +216,8 @@ function runQuiz(cfg) {
 
   if (cfg.speed) {
     st.speedId = setInterval(() => {
+      if (st.paused) return;
+      if (!document.querySelector('.speedbar')) { st.over = true; return clearInterval(st.speedId); } // 화면이 바뀌었으면 조용히 끝
       st.speedLeft -= 0.1;
       const bar = document.querySelector('.speedbar i'), lab = document.querySelector('.speedbar span');
       if (bar) bar.style.width = `${Math.max(0, st.speedLeft / cfg.speed) * 100}%`;
@@ -258,19 +264,20 @@ function runMap(cfg) {
     const bossBox = cfg.boss ? `<div class="boss card mini" id="boss"><div class="boss-art">${art(cfg.boss.img, cfg.boss.emoji, 'bossimg')}</div>
       <div class="boss-info"><b>${cfg.boss.name}</b><div class="hpbar"><i style="width:${(Math.max(0, st.bossHp) / cfg.boss.hp) * 100}%"></i></div><small>HP ${Math.max(0, st.bossHp).toLocaleString()}</small></div></div>` : '';
     $app.innerHTML = `${topBar(cfg.title, `<span class="chip">⭐ ${st.total.toLocaleString()}</span>`)}
+      <div class="qa map"><div class="qa-l">
       ${bossBox}
       <div class="stage"><span id="who">${JH.explorer()}</span>
         <div class="qcard card">
           <div class="qmeta"><span>${R.ic} ${R.name} 지도 · ${st.i + 1}/${cfg.cities.length}</span><span class="stars">${stars(city.d)}</span></div>
           <div class="maptarget">📍 ${label}</div>
         </div>
-      </div>
-      <div class="mapwrap">
+      </div></div>
+      <div class="qa-r"><div class="mapwrap">
         <svg preserveAspectRatio="xMidYMid meet"><g id="world" transform="scale(${R.kx},1)">${paths}<g id="marks"></g></g></svg>
         <div class="zoom"><button data-z="in" aria-label="확대">+</button><button data-z="out" aria-label="축소">−</button></div>
-      </div>
-      <div id="mapfb"></div>
-      <button class="go press" id="confirm" disabled>지도에서 위치를 눌러 줘</button>`;
+      </div></div>
+      <div class="qa-b"><div id="mapfb"></div>
+      <button class="go press" id="confirm" disabled>지도에서 위치를 눌러 줘</button></div></div>`;
     bindBack(async () => {
       const v = await modal(`<h2>그만할까?</h2><p>지금 나가면 처음부터 다시 해야 해요.</p><button class="go press" data-v="stay">계속하기</button><button class="ghost press" data-v="quit">나가기</button>`);
       if (v === 'quit') { st.over = true; persist(); cfg.onQuit(); }
@@ -308,7 +315,7 @@ function runMap(cfg) {
     const wrap = $app.querySelector('.mapwrap');
     wrap.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.zoom')) return;
-      wrap.setPointerCapture(e.pointerId);
+      try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* 일부 기기에서 실패해도 터치는 계속 받는다 */ }
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 1) { moved = false; downAt = { x: e.clientX, y: e.clientY, vb: vb.slice(), ppu: pxPerUnit() }; }
       if (pointers.size === 2) { const [a, b] = [...pointers.values()]; startDist = Math.hypot(a.x - b.x, a.y - b.y); startVB = vb.slice(); moved = true; }

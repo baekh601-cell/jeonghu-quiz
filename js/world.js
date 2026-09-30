@@ -115,15 +115,19 @@ function kingdom(opts = {}) {
   $app.classList.add('on-map');
 
   // 현재 위치로 스크롤
-  const target = toTop(start.y) - innerHeight * 0.55;
-  setTimeout(() => window.scrollTo(0, Math.max(0, target)), 0); // show() 가 맨 위로 올린 뒤에
+  // 확대 배율과 상관없이 실제 화면 좌표로 계산해서, 대상이 화면 아래쪽 45% 지점에 오게 스크롤
+  const scrollToEl = (el, smooth) => {
+    const r = el.getBoundingClientRect();
+    window.scrollBy({ top: r.top - innerHeight * 0.55, behavior: smooth && !reduced ? 'smooth' : 'auto' });
+  };
+  setTimeout(() => scrollToEl(document.getElementById('hero'), false), 0); // show() 가 맨 위로 올린 뒤에
   if (start !== curNode) { // 다음 스테이지로 걸어가기
     const hero = document.getElementById('hero');
     setTimeout(async () => {
       for (let i = 0; i < 3; i++) { sfx('step'); await wait(120); }
       hero.style.left = `${curNode.x}%`; hero.style.top = `${toTop(curNode.y)}px`;
       hero.classList.add('walking');
-      window.scrollTo({ top: Math.max(0, toTop(curNode.y) - innerHeight * 0.55), behavior: reduced ? 'auto' : 'smooth' });
+      scrollToEl($app.querySelector(`[data-node="${cur}"]`), true);
       setTimeout(() => hero.classList.remove('walking'), 900);
       if (opts.unlockedWorld) setTimeout(() => { sfx('unlock'); toast(`🎉 WORLD ${opts.unlockedWorld.id} ${opts.unlockedWorld.name} 열림!`); }, 900);
     }, 500);
