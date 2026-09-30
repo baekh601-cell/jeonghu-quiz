@@ -132,6 +132,35 @@ function mapPicker(wrap, city, onPick) {
     },
   };
 }
+// ───────── 나라 실루엣 ─────────
+const SHAPES = (window.MAP_DATA && window.MAP_DATA.shapes) || {};
+// 실루엣 문제로 쓸 만한 나라인지: 너무 작거나(모나코) 작은 섬이 넓게 흩어진 나라(키리바시)는 제외
+function shapeOk(iso) {
+  const s = SHAPES[iso];
+  if (!s) return false;
+  const ext = Math.max(s.box[2], s.box[3]);
+  return ext >= 1.2 && !(s.area < 0.5 && ext > 5);
+}
+// 나라 모양만 크게 (경도 방향은 위도에 맞춰 줄여서 실제 모양에 가깝게)
+function shapeSvg(iso) {
+  const s = SHAPES[iso];
+  const kx = Math.cos((s.lat * Math.PI) / 180);
+  const [x, y, w, h] = s.box;
+  const pad = Math.max(w * kx, h) * 0.08;
+  return `<svg class="sil" viewBox="${x * kx - pad} ${y - pad} ${w * kx + pad * 2} ${h + pad * 2}" preserveAspectRatio="xMidYMid meet"><g transform="scale(${kx},1)"><path d="${s.d}"/></g></svg>`;
+}
+// 세계 지도에서 그 나라 위치를 빨갛게 (정답 공개용)
+function locatorSvg(iso) {
+  const md = window.MAP_DATA || { world: [], iso: [] };
+  const s = SHAPES[iso];
+  const cx = s ? s.box[0] + s.box[2] / 2 : 0, cy = s ? s.box[1] + s.box[3] / 2 : 0;
+  const land = md.world.map((d, i) => (md.iso[i] === iso ? '' : `<path d="${d}"/>`)).join('');
+  // 강조는 날짜변경선 처리를 마친 실루엣 모양으로 (원본은 러시아처럼 ±180°에서 잘려 가로선이 생김)
+  const hl = s ? `<path class="hl" d="${s.d}"/>` : '';
+  const lon = ((cx + 180) % 360) - 180; // 날짜변경선 너머로 옮겨 둔 좌표를 되돌림
+  return `<svg class="locator" viewBox="-170 -84 350 142" preserveAspectRatio="xMidYMid meet"><g class="lm">${land}</g>${hl}<circle class="ring" cx="${lon}" cy="${cy}" r="7"/></svg>`;
+}
+
 const distText = (km) => (!isFinite(km) ? '위치를 못 찍었어요' : km < 1 ? '1km 이내' : `${Math.round(km).toLocaleString()}km`);
 
 /**
@@ -213,6 +242,7 @@ function runQuiz(cfg) {
     const qcard = `<div class="qcard card ${isMap ? 'mapcard' : ''}">
           <div class="qmeta"><span>${meta}${cfg.speed ? '' : ` · ${st.i + 1}/${cfg.qs.length}`}</span><span class="stars">${stars(q.d)}</span></div>
           ${q.flag ? `<div class="big-flag">${q.flag}</div>` : ''}
+          ${q.shape && SHAPES[q.shape] ? `<div class="silhouette">${shapeSvg(q.shape)}</div>` : ''}
           <div class="q">${esc(q.q)}</div><div id="hintbox"></div>
         </div>`;
     const owned = cfg.items === false ? [] : Object.keys(ITEMS).filter(usable);
@@ -469,7 +499,7 @@ function runQuiz(cfg) {
       : ok ? pick(['정답! 🎉', '맞았어! 👏', '대단해! 🌟', '역시 정후! 😎']) : `${timeout ? '⏰ 시간 초과! ' : ''}정답은 "${esc(q.a)}"`;
     const body = map ? `실제 위치(빨간 점)와 ${distText(map.km)} 떨어졌어요. (${MAP_OK}점 이상이면 정답)` : q.e ? esc(q.e) : '';
     document.getElementById('fb').innerHTML = `
-      <div class="feedback card ${ok ? 'ok' : 'no'}"><b>${head}</b>${body}</div>
+      <div class="feedback card ${ok ? 'ok' : 'no'}"><b>${head}</b>${body}${q.shape && SHAPES[q.shape] ? locatorSvg(q.shape) : ''}</div>
       <button class="go press ${ok ? 'mint' : ''}" ${cfg.boss ? 'disabled' : ''}>${nextLabel}</button>`;
     const next = document.querySelector('#fb .go');
     if (cfg.boss) setTimeout(() => (next.disabled = false), bossDown ? 2600 : 700); // 공격·K.O. 연출이 끝난 뒤
@@ -500,20 +530,24 @@ function runQuiz(cfg) {
 
 /**
  * 지도 게임 (도시 여러 개를 연속으로)
- * cfg: { title, cities, boss: {name, emoji, img, hp(점수)}, resume, onSnapshot, onEnd(result), onQuit() }
- * result: { total, log, cleared(보스일 때만 의미) }
+ * cfg: { title, cities, boss: {name, emoji, img, hp(점수)}, lives: 하트 수(서바이벌), resume, onSnapshot, onEnd(result), onQuit() }
+ * 서바이벌(lives): MAP_OK 점 미만이면 하트 -1, 연속으로 가까이 찍을수록 점수 배율이 올라간다 (최대 x2)
+ * result: { total, log, cleared(보스일 때만 의미), bestStreak }
  */
 function runMap(cfg) {
-  const st = { i: 0, total: 0, log: [], bossHp: cfg.boss ? cfg.boss.hp : 0, ...(cfg.resume || {}), over: false };
+  const st = { i: 0, total: 0, log: [], bossHp: cfg.boss ? cfg.boss.hp : 0, lives: cfg.lives ?? null, streak: 0, bestStreak: 0, ...(cfg.resume || {}), over: false };
+  const out = () => st.i >= cfg.cities.length || (cfg.boss && st.bossHp <= 0) || (st.lives !== null && st.lives <= 0);
+  const heartsHtml = (cls = '') => (st.lives === null ? '' : `<span class="hearts ${cls}">${'❤️'.repeat(Math.max(0, st.lives))}${'🤍'.repeat(Math.max(0, cfg.lives - st.lives))}</span>`);
+  const mult = () => 1 + Math.min(st.streak - 1, 5) * 0.2; // 연속 1번째 x1.0 … 6번째부터 x2.0
 
   function end() {
     if (st.over) return;
     st.over = true; persist();
-    cfg.onEnd({ total: st.total, log: st.log, cleared: cfg.boss ? st.bossHp <= 0 : true, max: cfg.cities.length * 1000 });
+    cfg.onEnd({ total: st.total, log: st.log, cleared: cfg.boss ? st.bossHp <= 0 : true, max: cfg.cities.length * 1000, bestStreak: st.bestStreak });
   }
 
   function round() {
-    if (st.i >= cfg.cities.length || (cfg.boss && st.bossHp <= 0)) return end();
+    if (out()) return end();
     if (cfg.onSnapshot) cfg.onSnapshot({ i: st.i, total: st.total, log: st.log, bossHp: st.bossHp, cities: cfg.cities });
     if (cfg.boss && st.i === 0 && !cfg.resume) setTimeout(() => say(bossLines(cfg.boss).start), 400);
     const city = cfg.cities[st.i];
@@ -521,12 +555,13 @@ function runMap(cfg) {
     const label = city.r === 'kr' ? esc(city.n) : `${esc(city.n)} <small>(${esc(city.co)})</small>`;
     const bossBox = cfg.boss ? `<div class="boss card mini" id="boss"><div class="taunt" id="taunt"></div><div class="boss-art">${art(cfg.boss.img, cfg.boss.emoji, 'bossimg')}</div>
       <div class="boss-info"><b>${cfg.boss.name}</b><div class="hpbar"><i style="width:${(Math.max(0, st.bossHp) / cfg.boss.hp) * 100}%"></i></div><small>HP ${Math.max(0, st.bossHp).toLocaleString()}</small></div></div>` : '';
-    $app.innerHTML = `${topBar(cfg.title, `<span class="chip">⭐ ${st.total.toLocaleString()}</span>`)}
+    const streakChip = st.lives !== null && st.streak >= 1 ? `<span class="chip">🔥${st.streak}</span>` : '';
+    $app.innerHTML = `${topBar(cfg.title, `${heartsHtml()}${streakChip}<span class="chip">⭐ ${st.total.toLocaleString()}</span>`)}
       <div class="qa map"><div class="qa-l">
       ${bossBox}
       <div class="stage"><span id="who">${JH.explorer()}</span>
         <div class="qcard card">
-          <div class="qmeta"><span>${R.ic} ${R.name} 지도 · ${st.i + 1}/${cfg.cities.length}</span><span class="stars">${stars(city.d)}</span></div>
+          <div class="qmeta"><span>${R.ic} ${R.name} 지도 · ${st.lives !== null ? `${st.i + 1}번째 도시` : `${st.i + 1}/${cfg.cities.length}`}</span><span class="stars">${stars(city.d)}</span></div>
           <div class="maptarget">📍 ${label}</div>
         </div>
       </div></div>
@@ -545,12 +580,17 @@ function runMap(cfg) {
       if (done) {
         sfx('tap');
         st.i++;
-        if (st.i >= cfg.cities.length || (cfg.boss && st.bossHp <= 0)) return end();
+        if (out()) return end();
         return show(round);
       }
       done = true;
       const { km, pts } = picker.reveal();
-      st.total += pts;
+      let gained = pts, lost = false;
+      if (st.lives !== null) { // 서바이벌: 가까우면 연속 배율, 멀면 하트 -1
+        if (pts >= MAP_OK) { st.streak++; st.bestStreak = Math.max(st.bestStreak, st.streak); gained = Math.round(pts * mult()); }
+        else { st.streak = 0; st.lives--; lost = true; shake(); const h = document.querySelector('.hearts'); if (h) h.outerHTML = heartsHtml('hurt'); }
+      }
+      st.total += gained;
       st.log.push({ city, km, pts });
       save.seen[city.k] = true;
       addXp(Math.round(pts / 50));
@@ -584,9 +624,13 @@ function runMap(cfg) {
       document.getElementById('who').innerHTML = pts >= 300 ? JH.correct() : JH.wrong();
       if (pts >= 900) { confetti(60); sikseven(document.getElementById('who')); }
       const cheer = pts >= 900 ? '거의 정확해! 🎯' : pts >= 600 ? '아주 가까워! 👏' : pts >= 300 ? '괜찮아! 🙂' : '조금 멀었어 😅';
-      document.getElementById('mapfb').innerHTML = `<div class="feedback card ${pts >= 300 ? 'ok' : 'no'}"><b>${cheer} +${pts}점</b>실제 위치(빨간 점)와 ${distText(km)} 떨어졌어요.</div>`;
+      const bonusTxt = gained > pts ? ` <small>(🔥${st.streak}연속 x${(gained / pts).toFixed(1)})</small>` : '';
+      const lifeTxt = lost ? `<br>💔 ${MAP_OK}점이 안 돼서 하트가 하나 줄었어요.` : '';
+      document.getElementById('mapfb').innerHTML = `<div class="feedback card ${pts >= 300 ? 'ok' : 'no'}"><b>${cheer} +${gained}점${bonusTxt}</b>실제 위치(빨간 점)와 ${distText(km)} 떨어졌어요.${lifeTxt}</div>`;
       const bossDown = cfg.boss && st.bossHp <= 0;
-      this.textContent = bossDown ? '보스 격파! 🎉' : st.i === cfg.cities.length - 1 ? '결과 보기 🏁' : '다음 도시 ›';
+      const gameOver = st.lives !== null && st.lives <= 0;
+      this.textContent = bossDown ? '보스 격파! 🎉' : gameOver ? '게임 끝! 결과 보기 🏁' : st.i === cfg.cities.length - 1 ? '결과 보기 🏁' : '다음 도시 ›';
+      if (gameOver) sfx('fail');
       if (bossDown) { this.disabled = true; setTimeout(() => (this.disabled = false), 2600); }
     };
   }

@@ -22,6 +22,8 @@ const save = {
   story: false,      // 첫 이야기 봤는지
   recent: [],        // 최근 정답 여부 (난이도 자동 조정용)
   run: null,         // 하던 스테이지 (이어하기용): { id, kind, state }
+  survivalBest: 0,   // 지도 서바이벌 최고 점수
+  shapeBest: 0,      // 나라 모양 맞히기 최고 연속 정답
 };
 try {
   const old = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
@@ -273,6 +275,13 @@ function countryQuestions() {
   for (const c of COUNTRIES) {
     if (c.d === 1 || c.noCont) continue; // 너무 쉽거나, 대륙 구분이 애매한 나라는 제외
     out.push({ k: 'cont:' + c.iso, q: `${josa(c.n, '은', '는')} 어느 대륙에 있을까?`, a: c.cont, w: shuffle(conts.filter((x) => x !== c.cont)).slice(0, 3), d: c.d, e: `${flag(c)}${josa(c.n, '은', '는')} ${c.cont}에 있어요.` });
+  }
+  // 나라 실루엣: 모양만 보고 어느 나라인지 (보기는 같은 대륙 나라로)
+  for (const c of COUNTRIES) {
+    if (!shapeOk(c.iso)) continue;
+    const near = COUNTRIES.filter((x) => x !== c && x.cont === c.cont && !x.noCont);
+    const w = shuffle(near.length >= 3 ? near : COUNTRIES.filter((x) => x !== c)).slice(0, 3).map((x) => x.n);
+    out.push({ k: 'shape:' + c.iso, shape: c.iso, q: '이 모양은 어느 나라일까?', a: c.n, w, d: c.d === 1 ? 2 : 3, e: `${flag(c)}${c.n}의 모양이에요. 빨간 곳이 ${c.n}이에요.` });
   }
   // 이 도시는 어느 나라? (수도와 폭포·산 같은 명소는 제외 — 수도는 위에서 이미 묻고, 명소는 국경에 걸친 곳이 있음)
   const capSet = new Set(COUNTRIES.map((c) => c.c));

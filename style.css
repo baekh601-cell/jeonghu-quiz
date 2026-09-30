@@ -526,3 +526,13 @@ body.wide .arena .fighter.me .who { width: 110px; height: 110px; }
 .quizmap { min-height: calc(46vh / var(--z, 1)); }
 #mapok { margin-top: 12px; }
 body.wide .qa.has-map .quizmap { flex: none; min-height: 260px; height: calc(100vh / var(--z, 1) - 190px); }
+/* ═════════ 나라 실루엣 ═════════ */
+.silhouette { display: grid; place-items: center; height: 170px; margin: 4px 0 8px; background: radial-gradient(circle, #ffffff 0 55%, #eaf4ff 100%); border-radius: 14px; }
+.silhouette .sil { width: 100%; height: 100%; }
+.silhouette .sil path { fill: var(--navy); stroke: var(--navy); stroke-width: .6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.locator { display: block; width: 100%; height: 120px; margin-top: 8px; background: #cfe8ff; border-radius: 10px; }
+.locator .lm path { fill: #fff3cf; stroke: #a58c5a; stroke-width: .4; vector-effect: non-scaling-stroke; }
+.locator .hl { fill: var(--coral); stroke: var(--navy); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.locator .ring { fill: none; stroke: var(--coral); stroke-width: 2; vector-effect: non-scaling-stroke; animation: pulseRing 1.2s ease-out infinite; }
+@keyframes pulseRing { 50% { stroke-opacity: .3; } }
+@media (max-height: 460px) { .silhouette { height: 110px; } }

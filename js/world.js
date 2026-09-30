@@ -160,6 +160,7 @@ function stageInfo(w, k) {
   const base = w.cat === 'map' ? MAP_DIFF : hard ? HARD_DIFF : w.id <= 2 ? STAGE_DIFF : MID_DIFF;
   const diffs = w.cat === 'map' ? base[k] : adaptDiffs(base[k] || [2, 3]); // 지도는 도시 난이도, 나머지는 실력 따라 조정
   const mixNote = CATS[w.cat] ? `${CATS[w.cat].name} 절반 + 여러 주제 섞어서` : '모든 주제 섞어서';
+  if (k === 'B' && w.cat === 'map') return { kind: 'bonus', title: `${w.id}-? 보너스`, desc: '🎯 지도 서바이벌! 하트 3개로 도시를 계속 찍어요. 연속으로 가까이 찍으면 점수가 최대 2배!', diffs: [1, 2, 3] };
   if (k === 'B') return { kind: 'bonus', title: `${w.id}-? 보너스`, desc: `45초 스피드 퀴즈! ${mixNote}. 맞힐 때마다 코인을 받아요.`, diffs: adaptDiffs([2]) };
   if (k === 'C') {
     const hp = w.cat === 'map' ? 4500 : hard ? 20 : w.id <= 2 ? 14 : 16; // 크리티컬·필살기가 있어서 약 7~10문제 대결
@@ -219,6 +220,12 @@ async function playStage(w, k, resume) {
   const info = stageInfo(w, k);
   const quit = () => { keepAwake(false); toMap(); }; // 나가도 save.run 은 남겨서 이어하기 가능
   if (info.kind === 'boss' && !resume) { $app.innerHTML = ''; await vsIntro(w.boss); } // 보스 등장 컷신
+  if (info.kind === 'bonus' && w.cat === 'map') {
+    return runMap({
+      title: `${w.id}-? 지도 서바이벌`, cities: survivalCities(), lives: 3,
+      onQuit: quit, onEnd: (r) => { clearRun(); recordSurvival(r); stageResult(w, k, { cleared: true, stars: 1, coins: 0, map: r }); },
+    });
+  }
   if (info.kind === 'bonus') {
     return runQuiz({
       title: `${w.id}-? 보너스`, qs: stageQuestions(w, info, 80), speed: 45, items: false,
@@ -254,6 +261,16 @@ async function playStage(w, k, resume) {
       stageResult(w, k, { ...r, stars: s });
     },
   });
+}
+// 지도 서바이벌용 도시 순서: 쉬운 곳부터 점점 어렵게 (세계·한국 섞어서)
+function survivalCities() {
+  const all = cityList();
+  return [...drawQuestions(all, 8, [1]), ...drawQuestions(all, 16, [2]), ...drawQuestions(all, 60, [3])];
+}
+function recordSurvival(r) {
+  const best = r.total > save.survivalBest;
+  if (best) { save.survivalBest = r.total; persist(); }
+  return best;
 }
 function resumeRun() {
   const run = save.run;
@@ -439,6 +456,8 @@ function freeMenu() {
     <div class="tickets">
       ${t('speed', '스피드 챌린지', '⚡', 'icon-speed', `60초 동안 몇 개나? 최고 ${save.speedBest}개`, '#ffd43b', true)}
       ${t('map', '지도에서 도시 찾기', '🗺️', 'icon-map', '세계·한국 지도', '#3ddc97', true)}
+      ${t('survival', '지도 서바이벌', '🎯', 'icon-map', `하트 3개로 어디까지? 최고 ${save.survivalBest.toLocaleString()}점`, '#ff6b6b')}
+      ${t('shape', '나라 모양 맞히기', '🧩', 'icon-capital', `실루엣만 보고! 최고 ${save.shapeBest}연속`, '#1f2a5a')}
       ${Object.entries(CATS).map(([k, c]) => t(k, c.name, c.ic, c.icon, `${countFor(k)}문제`, c.c)).join('')}
       ${t('mix', '전부 섞기', '🌏', 'icon-mix', '모든 주제에서', '#4fb3ff')}
       ${t('wrong', '오답 노트', '📒', 'icon-wrongnote', `${save.wrong.length}개`, '#ff6b6b')}
@@ -448,6 +467,30 @@ function freeMenu() {
     sfx('tap');
     const k = b.dataset.free;
     if (k === 'map') return show(freeMapSetup);
+    if (k === 'survival') {
+      const start = () => runMap({
+        title: '🎯 지도 서바이벌', cities: survivalCities(), lives: 3, onQuit: () => show(freeMenu),
+        onEnd: (r) => {
+          const best = recordSurvival(r);
+          freeResult({ correct: 0, total: 0, coins: 0, title: `${r.total.toLocaleString()}점!`, sub: `도시 ${r.log.length}곳 · 최고 ${r.bestStreak}연속${best ? ' · 🎉 새 최고 기록!' : ` · 최고 기록 ${save.survivalBest.toLocaleString()}점`}`, again: start });
+        },
+      });
+      return flyTo(start);
+    }
+    if (k === 'shape') {
+      // 나라 모양만 연속으로. 하트 3개, 틀리면 끝나는 도전
+      const pool = questionsFor('capital').filter((q) => q.shape);
+      const qs = [...drawQuestions(pool, 8, [2]), ...drawQuestions(pool, 40, [3])];
+      const start = () => runQuiz({
+        title: '🧩 나라 모양 맞히기', qs, hearts: 3, onQuit: () => show(freeMenu),
+        onEnd: (r) => {
+          const streak = r.maxStreak, best = streak > save.shapeBest;
+          save.shapeBest = Math.max(save.shapeBest, streak); persist();
+          freeResult({ ...r, title: `${r.correct}개 맞혔어!`, sub: `최고 ${streak}연속${best ? ' · 🎉 새 기록!' : ` · 최고 기록 ${save.shapeBest}연속`}`, again: () => b.click() });
+        },
+      });
+      return flyTo(start);
+    }
     if (k === 'speed') return flyTo(() => runQuiz({
       title: '⚡ 스피드 챌린지', qs: mixedQuestions(150, [1, 2]), speed: 60, items: false,
       onQuit: () => show(freeMenu),
@@ -554,6 +597,8 @@ function stats() {
       <div><span>푼 문제 / 정답률</span><b>${save.answered}개 / ${save.answered ? Math.round((save.correct / save.answered) * 100) : 0}%</b></div>
       <div><span>최고 연속 정답</span><b>${save.bestStreak}개</b></div>
       <div><span>⚡ 스피드 최고</span><b>${save.speedBest}개</b></div>
+      <div><span>🎯 지도 서바이벌 최고</span><b>${save.survivalBest.toLocaleString()}점</b></div>
+      <div><span>🧩 나라 모양 최고</span><b>${save.shapeBest}연속</b></div>
     </div>
     <div class="label">월드별 별</div>
     <div class="stat-list">${worlds}</div>
