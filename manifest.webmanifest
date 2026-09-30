@@ -1,6 +1,6 @@
 {
-  "name": "정후의 비행 퀴즈",
-  "short_name": "정후 퀴즈",
+  "name": "정후의 퀴즈 왕국",
+  "short_name": "퀴즈 왕국",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

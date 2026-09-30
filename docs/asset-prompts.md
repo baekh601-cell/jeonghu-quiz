@@ -1,14 +1,14 @@
-# 🎨 정후의 세계일주 퀴즈왕 — 이미지 에셋 제작 가이드
+# 🎨 정후의 퀴즈 왕국 — 이미지 에셋 제작 가이드
 
 ## 컨셉
-귀여운 9살 한국 남자아이 **정후**가 작은 비행기를 타고 세계를 여행하며 퀴즈를 풀어요. 주제마다 **여행지**가 하나씩 있고, 퀴즈를 통과하면 **여권에 도장**을 받아요. 도장을 모아 **퀴즈왕 왕관**을 얻는 게 목표예요.
+심술쟁이 **모르쇠 대왕**이 퀴즈 왕국의 지식 별을 훔쳐 갔어요. 귀여운 9살 한국 남자아이 **정후**가 8개 월드(수도 초원 → 깃발 해변 → 역사 고궁 마을 → 과학 화산섬 → 홈런 스타디움 → 넌센스 구름나라 → 탐험 정글 → 모르쇠 대왕의 성)를 지나며 스테이지를 깨고, 각 월드의 성에서 **보스**를 물리쳐 **퀴즈왕**이 되는 이야기예요.
 
 ## 올리는 곳
 - 업로드 폴더: **https://github.com/baekh601-cell/jeonghu-quiz/tree/main/assets/raw**
 - 방법: 위 링크 → **Add file → Upload files** → 파일을 끌어다 놓기 → **Commit changes**
 - **파일 이름은 아래 표의 이름과 똑같이** 지어 주세요. 그래야 앱이 자동으로 인식해요.
 - GPT가 만든 PNG를 **그대로** 올려 주세요. 앱에 맞는 크기로 줄이고 압축(WebP)하는 건 제가 할게요. 오프라인 앱이라 용량을 작게 유지해야 해요.
-- ⚠️ 저장소는 공개로 전환될 예정이에요. **정후의 실제 사진은 올리지 마세요.** GPT에서 참고용으로만 쓰는 건 괜찮아요.
+- ⚠️ 저장소는 공개 상태예요. **정후의 실제 사진은 올리지 마세요.** GPT에서 참고용으로만 쓰는 건 괜찮아요.
 
 ## 제작 순서 (중요)
 1. **`jeonghu-base.png`를 가장 먼저** 만들어 마음에 들 때까지 다듬어 주세요.
@@ -136,9 +136,48 @@ App icon: close-up of Jeonghu's smiling face looking out of a round airplane win
 
 ---
 
+## 4. 왕국 모드 추가 이미지 (투명 배경 PNG)
+
+### 정후 · 상점 주인
+| 파일 이름 | GPT 생성 크기 | 앱 표시 크기 | 쓰이는 곳 |
+|---|---|---|---|
+| `jeonghu-walk.png` | 1024×1024 | 약 64px | 월드맵 위를 걸어 다니는 정후 |
+| `shopkeeper.png` | 1024×1024 | 약 72px | 상점 주인 (부엉이 할아버지) |
+
+**jeonghu-walk.png**
+```
+[공통 스타일] [캐릭터 설정] Same character as the attached reference image.
+Full body, walking cheerfully toward the viewer at a slight angle, one leg forward, arms swinging, backpack visible. Must read clearly at very small size (64px): bold silhouette, simple shapes. Centered, transparent background.
+```
+
+**shopkeeper.png**
+```
+[공통 스타일]
+A kind old owl shopkeeper with small round glasses, a striped apron and a tiny merchant cap, holding a small pouch of gold coins, friendly welcoming smile. Upper body. Centered, transparent background.
+```
+
+### 월드 보스 8종 (모두 1024×1024, 앱에서 약 90~150px)
+무섭지 않고 **장난스럽고 귀여운 악당**이어야 해요. 9살 아이가 "물리치고 싶다"고 느낄 정도로만. 모두 **정면을 보고 서 있는 전신**으로 만들어 주세요.
+
+| 파일 이름 | 월드 | 보스 | 프롬프트 (공통 스타일 뒤에 붙이기) |
+|---|---|---|---|
+| `boss-1.png` | 1 수도 초원 | 멧돼지 대장 붕붕 | `Boss character: a chubby cartoon wild boar general with tiny tusks, a dented soldier helmet with a flower stuck in it, arms crossed, grumpy but silly expression. Full body, centered, transparent background.` |
+| `boss-2.png` | 2 깃발 해변 | 꽃게 선장 집게리 | `Boss character: a big red crab pirate captain with an eyepatch and a tricorn hat, one claw holding a tangled bundle of colorful flags, mischievous grin. Full body, centered, transparent background.` |
+| `boss-3.png` | 3 역사 고궁 마을 | 심술 이무기 | `Boss character: a cute but sulky Korean imugi (serpent-dragon without full horns) coiled up, jade-green scales, holding an old scroll in its mouth, pouting cheeks. Full body, centered, transparent background.` |
+| `boss-4.png` | 4 과학 화산섬 | 용암 공룡 뜨거라 | `Boss character: a round orange baby T-rex made of cooling lava rock with glowing cracks, wearing oversized safety goggles, tiny arms raised, puffing a small steam cloud. Full body, centered, transparent background.` |
+| `boss-5.png` | 5 홈런 스타디움 | 홈런 고릴라 빵빵 | `Boss character: a big friendly-looking gorilla baseball slugger with a backwards cap and a giant wooden bat on his shoulder, chewing bubble gum blowing a pink bubble, cocky smirk. Full body, centered, transparent background.` |
+| `boss-6.png` | 6 넌센스 구름나라 | 장난꾸러기 문어 꼬물 | `Boss character: a pastel purple octopus jester with a floppy jester hat, each tentacle juggling a different silly object (rubber duck, pie, balloon), laughing with tongue out. Full body, centered, transparent background.` |
+| `boss-7.png` | 7 탐험 정글 | 정글 대왕뱀 스르륵 | `Boss character: a long green jungle snake wearing an explorer pith helmet and a monocle, coiled around a treasure map, smug sneaky smile. Full body, centered, transparent background.` |
+| `boss-8.png` | 8 모르쇠 대왕의 성 | 모르쇠 대왕 | `Final boss character: King "Moreusoe", a short round purple goblin-like king with a too-big crooked crown, a long royal cape, holding a sack overflowing with glowing golden stars he stole, covering his ears with one hand ("I don't know anything!"), bratty smug face. Full body, centered, transparent background.` |
+
+### 자유 여행 아이콘
+| 파일 이름 | 크기 | 프롬프트 (공통 스타일 뒤에 붙이기) |
+|---|---|---|
+| `icon-speed.png` | 1024×1024 | `Round sticker icon: a yellow stopwatch with a lightning bolt, motion lines. Centered, transparent background.` |
 ## 체크리스트
 - [ ] 캐릭터 8개 (`jeonghu-*.png`)
 - [ ] 아이콘 10개 (`icon-*.png`)
 - [ ] 배경 2개 + 앱 아이콘 1개
-- 총 **21개**. 한꺼번에 올리지 않아도 돼요. 올라온 파일부터 앱에 반영하고, 아직 없는 이미지는 임시 그림으로 표시할게요.
+- [ ] 왕국 모드: 걷는 정후, 상점 주인, 보스 8종, 스피드 아이콘 (11개)
+- 총 **32개**. 우선순위: `jeonghu-base` → 표정 5종 → `jeonghu-walk` → 보스 8종 → 나머지. 한꺼번에 올리지 않아도 돼요. 올라온 파일부터 앱에 반영하고, 아직 없는 이미지는 임시 그림으로 표시할게요.
 - 로고 글자("정후의 세계일주 퀴즈왕")는 GPT가 한글을 자주 틀리게 쓰기 때문에 이미지로 만들지 않고 앱에서 글꼴로 만들어요.

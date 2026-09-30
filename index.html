@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#4fb3ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="정후 퀴즈">
-<title>정후의 세계일주 퀴즈왕</title>
+<meta name="apple-mobile-web-app-title" content="퀴즈 왕국">
+<title>정후의 퀴즈 왕국</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -15,6 +15,7 @@
 </head>
 <body>
 <div id="app"></div>
+<div id="ui"></div>
 <script>
   // 문제은행 등록소: data/*.js 파일들이 QB.add(카테고리, [문제...]) 로 등록한다.
   window.QB = { banks: {}, add(cat, list) { (this.banks[cat] = this.banks[cat] || []).push(...list); } };
@@ -27,9 +28,11 @@
 <script src="data/kbo.js"></script>
 <script src="data/map.js"></script>
 <script src="data/assets.js"></script>
-<script src="app.js"></script>
+<script src="js/core.js"></script>
+<script src="js/play.js"></script>
+<script src="js/world.js"></script>
 <script>
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  if ('serviceWorker' in navigator && location.protocol === 'https:') { // 개발(localhost)에서는 캐시 안 씀
     navigator.serviceWorker.register('sw.js');
   }
 </script>
