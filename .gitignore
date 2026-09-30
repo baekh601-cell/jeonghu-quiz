@@ -2,3 +2,6 @@ node_modules/
 .claude/
 assets/img/
 review/
+www/
+android/
+resources/

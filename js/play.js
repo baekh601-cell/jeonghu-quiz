@@ -53,7 +53,6 @@ function mapPicker(wrap, city, onPick) {
   setVB();
   const toMap = (cx, cy) => { const p = svg.createSVGPoint(); p.x = cx; p.y = cy; const m = p.matrixTransform(g.getScreenCTM().inverse()); return { lon: m.x, lat: -m.y }; };
   const pxPerUnit = () => svg.getScreenCTM().a; // viewBox 1단위당 화면 px
-  const toVB = (cx, cy) => { const p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(svg.getScreenCTM().inverse()); };
 
   let guess = null, done = false;
   const pinR = () => 8 / pxPerUnit(); // 확대해도 화면에서 항상 비슷한 크기
@@ -64,52 +63,89 @@ function mapPicker(wrap, city, onPick) {
     marks.innerHTML = (guess ? `<line class="pin-line" x1="${guess.lon}" y1="${-guess.lat}" x2="${city.lon}" y2="${-city.lat}"/>` + pin('pin-guess', guess.lon, guess.lat) : '')
       + pin('pin-real', city.lon, city.lat);
   }
-  // 확대/이동 (포인터 1개 = 드래그 이동, 2개 = 핀치 확대, 짧게 탭 = 위치 선택)
-  const pointers = new Map();
-  let startDist = 0, startVB = null, moved = false, downAt = null;
+  // ── 확대/이동 ──
+  // 원칙: 손가락이 처음 닿은 지도 위의 점(anchor)이 끝까지 그 손가락 아래에 붙어 있게 한다.
+  //  · 한 손가락: 끌기  · 두 손가락: 벌리고 오므리며 동시에 이동  · 짧게 탭: 위치 찍기
+  //  · 손가락 수가 바뀌면(두 개 → 하나) 그 순간 위치로 다시 붙잡아서 지도가 튀지 않게
+  const MIN_W = home0[2] / 40, MAX_W = home0[2] * 1.5;
+  // viewBox v 일 때의 화면 배치 (preserveAspectRatio=meet 를 직접 계산 — 아직 그리지 않은 viewBox 에도 쓸 수 있게)
+  function frame(v) {
+    const r = svg.getBoundingClientRect();
+    const ppu = Math.min(r.width / v[2], r.height / v[3]);
+    return { ppu, ox: r.left + (r.width - v[2] * ppu) / 2, oy: r.top + (r.height - v[3] * ppu) / 2 };
+  }
+  const screenToVB = (cx, cy, v = vb) => { const f = frame(v); return { x: v[0] + (cx - f.ox) / f.ppu, y: v[1] + (cy - f.oy) / f.ppu }; };
+  // 크기 w×h 인 viewBox 에서 지도 위의 점 p 가 화면 (cx, cy) 에 오도록
+  function place(p, cx, cy, w, h) { const f = frame([0, 0, w, h]); return [p.x - (cx - f.ox) / f.ppu, p.y - (cy - f.oy) / f.ppu, w, h]; }
+  // 지도가 화면 밖으로 사라지지 않게: 화면 가운데가 원래 지도 범위(+10%) 안에 머물도록
+  function clampVB(v) {
+    const mx = home0[2] * 0.1, my = home0[3] * 0.1;
+    const cx = Math.min(home0[0] + home0[2] + mx, Math.max(home0[0] - mx, v[0] + v[2] / 2));
+    const cy = Math.min(home0[1] + home0[3] + my, Math.max(home0[1] - my, v[1] + v[3] / 2));
+    return [cx - v[2] / 2, cy - v[3] / 2, v[2], v[3]];
+  }
+  let raf = 0;
+  function apply(v) { // 계산은 바로, 그리기는 화면 새로 고칠 때 한 번만 (부드럽게)
+    vb = clampVB(v);
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; setVB(); redraw(); });
+  }
+  const clampW = (w) => Math.min(MAX_W, Math.max(MIN_W, w));
   function zoomAt(factor, cx, cy) {
-    const newW = Math.min(home0[2] * 1.5, Math.max(home0[2] / 40, vb[2] / factor));
-    const f = vb[2] / newW;
-    const m = toVB(cx, cy); // 손가락 아래 지점을 고정한 채 확대
-    vb = [m.x - (m.x - vb[0]) / f, m.y - (m.y - vb[1]) / f, newW, vb[3] / f];
-    setVB(); redraw();
+    const p = screenToVB(cx, cy), w = clampW(vb[2] / factor);
+    apply(place(p, cx, cy, w, vb[3] * (w / vb[2])));
+  }
+  function animateZoom(factor, cx, cy) { // + / − 버튼은 짧게 스르륵
+    const steps = 8, f = Math.pow(factor, 1 / steps);
+    let i = 0;
+    (function step() { zoomAt(f, cx, cy); if (++i < steps) requestAnimationFrame(step); })();
+  }
+
+  const pointers = new Map();
+  let gest = null, moved = false, downPos = null;
+  function startGesture() { // 지금 닿아 있는 손가락 기준으로 다시 붙잡기
+    const pts = [...pointers.values()];
+    if (pts.length >= 2) {
+      const [a, b] = pts;
+      gest = { type: 'pinch', anchor: screenToVB((a.x + b.x) / 2, (a.y + b.y) / 2), d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, w0: vb[2], h0: vb[3] };
+    } else if (pts.length === 1) {
+      gest = { type: 'pan', anchor: screenToVB(pts[0].x, pts[0].y) };
+    } else gest = null;
   }
   wrap.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.zoom')) return;
     try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* 일부 기기에서 실패해도 터치는 계속 받는다 */ }
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.size === 1) { moved = false; downAt = { x: e.clientX, y: e.clientY, vb: vb.slice(), ppu: pxPerUnit() }; }
-    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; startDist = Math.hypot(a.x - b.x, a.y - b.y); startVB = vb.slice(); moved = true; }
+    if (pointers.size === 1) { moved = false; downPos = { x: e.clientX, y: e.clientY }; } else moved = true;
+    startGesture();
   });
   wrap.addEventListener('pointermove', (e) => {
-    if (!pointers.has(e.pointerId)) return;
+    if (!pointers.has(e.pointerId) || !gest) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.size === 2 && startVB) {
-      const [a, b] = [...pointers.values()];
-      vb = startVB.slice();
-      zoomAt(Math.hypot(a.x - b.x, a.y - b.y) / startDist, (a.x + b.x) / 2, (a.y + b.y) / 2);
-    } else if (pointers.size === 1 && downAt) {
-      const dx = e.clientX - downAt.x, dy = e.clientY - downAt.y;
-      if (Math.hypot(dx, dy) > 8) moved = true;
-      if (moved) { const u = 1 / downAt.ppu; vb = [downAt.vb[0] - dx * u, downAt.vb[1] - dy * u, vb[2], vb[3]]; setVB(); }
+    const pts = [...pointers.values()];
+    if (gest.type === 'pinch' && pts.length >= 2) {
+      const [a, b] = pts;
+      const w = clampW(gest.w0 * gest.d0 / (Math.hypot(a.x - b.x, a.y - b.y) || 1));
+      apply(place(gest.anchor, (a.x + b.x) / 2, (a.y + b.y) / 2, w, gest.h0 * (w / gest.w0)));
+    } else if (gest.type === 'pan' && pts.length === 1) {
+      if (!moved && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 8) moved = true;
+      if (moved) apply(place(gest.anchor, e.clientX, e.clientY, vb[2], vb[3]));
     }
   });
   const up = (e) => {
     if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
-    if (pointers.size < 2) startVB = null;
     if (pointers.size === 0 && !moved && !done) {
       guess = toMap(e.clientX, e.clientY);
       redraw(); sfx('tap');
       if (onPick) onPick(guess);
     }
-    if (pointers.size === 0) downAt = null;
+    startGesture();
   };
   wrap.addEventListener('pointerup', up);
   wrap.addEventListener('pointercancel', up);
-  wrap.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); }, { passive: false });
+  wrap.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY); }, { passive: false });
   wrap.querySelectorAll('[data-z]').forEach((b) => (b.onclick = () => {
-    const r = svg.getBoundingClientRect(); zoomAt(b.dataset.z === 'in' ? 1.6 : 1 / 1.6, r.left + r.width / 2, r.top + r.height / 2);
+    const r = svg.getBoundingClientRect(); animateZoom(b.dataset.z === 'in' ? 2 : 0.5, r.left + r.width / 2, r.top + r.height / 2);
   }));
 
   return {

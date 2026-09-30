@@ -29,15 +29,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:assets
-      - name: 배포할 파일만 모으기
-        run: |
-          mkdir -p _site/data _site/assets _site/js
-          cp js/*.js _site/js/
-          cp index.html style.css sw.js manifest.webmanifest icon.svg icon-192.png icon-512.png _site/
-          cp data/*.js _site/data/
-          cp -r assets/fonts _site/assets/
-          if [ -d assets/img ]; then cp -r assets/img _site/assets/; fi
+      - run: npm run build:www # 배포할 파일만 www/ 로 모으기 (안드로이드 앱도 같은 결과물)
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
       - id: deployment
         uses: actions/deploy-pages@v4

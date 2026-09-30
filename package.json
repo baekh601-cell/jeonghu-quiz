@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:map": "node tools/build-map.mjs",
-    "build:assets": "node tools/build-assets.mjs"
+    "build:assets": "node tools/build-assets.mjs",
+    "build:www": "node tools/build-www.mjs",
+    "build:icons": "node tools/build-app-icons.mjs"
   },
   "repository": {
     "type": "git",
@@ -21,10 +23,20 @@
   },
   "homepage": "https://github.com/baekh601-cell/jeonghu-quiz#readme",
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
     "@fontsource/jua": "^5.3.0",
     "i18n-iso-countries": "^7.14.0",
+    "node-forge": "^1.4.0",
     "sharp": "^0.35.5",
     "topojson-client": "^3.1.0",
     "world-atlas": "^2.0.2"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2"
   }
 }

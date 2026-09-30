@@ -1,0 +1,72 @@
+# main 에 push 되면 안드로이드 앱(APK)을 만들어 GitHub 릴리스 'app-latest' 에 올린다.
+# 받는 주소(항상 최신): https://github.com/baekh601-cell/jeonghu-quiz/releases/download/app-latest/jeonghu-quiz.apk
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - name: 웹 파일·아이콘 준비
+        run: |
+          npm run build:assets
+          npm run build:www
+          npm run build:icons
+      - name: 안드로이드 프로젝트 만들기
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android --assetPath resources --iconBackgroundColor '#4fb3ff' --splashBackgroundColor '#4fb3ff'
+          npx cap sync android
+          # 앱 버전 = 빌드 번호 (업데이트할 때마다 올라감)
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+      - name: APK 빌드
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: 서명 (항상 같은 키 — 그래야 지우지 않고 업데이트 가능)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$KS_B64" | base64 -d > release.p12
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          "$BT/apksigner" sign --ks release.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --key-pass env:KS_PASS --ks-key-alias "$KS_ALIAS" --out jeonghu-quiz.apk aligned.apk
+          "$BT/apksigner" verify --print-certs jeonghu-quiz.apk | head -3
+          rm release.p12
+          ls -lh jeonghu-quiz.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jeonghu-quiz-apk
+          path: jeonghu-quiz.apk
+      - name: 릴리스 'app-latest' 에 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete app-latest --yes --cleanup-tag || true
+          gh release create app-latest jeonghu-quiz.apk \
+            --title "정후의 퀴즈 왕국 앱 (빌드 ${{ github.run_number }})" \
+            --notes "휴대폰에서 jeonghu-quiz.apk 를 눌러 받은 뒤 설치하세요. 커밋: ${{ github.sha }}" \
+            --target ${{ github.sha }} --latest

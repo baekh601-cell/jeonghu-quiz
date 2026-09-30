@@ -1,0 +1,9 @@
+{
+  "appId": "io.github.baekh601.jeonghuquiz",
+  "appName": "정후의 퀴즈 왕국",
+  "webDir": "www",
+  "backgroundColor": "#4fb3ff",
+  "android": {
+    "allowMixedContent": false
+  }
+}

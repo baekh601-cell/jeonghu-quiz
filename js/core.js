@@ -124,15 +124,44 @@ const SFX = {
   roar: () => { tone(220, 0.6, { type: 'sawtooth', vol: 0.07, slide: 0.45 }); tone(147, 0.7, { type: 'square', vol: 0.05, at: 0.05, slide: 0.5 }); },
 };
 function sfx(name) { try { SFX[name] && SFX[name](); } catch (e) { /* 소리 실패는 무시 */ } }
-// 진동 (안드로이드). 소리 끄기(🔇)를 하면 진동도 꺼진다
-function buzz(pattern) { try { if (save.sound && navigator.vibrate) navigator.vibrate(pattern); } catch (e) { /* 무시 */ } }
+// ───────── 안드로이드 앱(APK)으로 실행될 때 ─────────
+// Capacitor 가 앱 안에 넣어 주는 window.Capacitor 로 기기 기능을 쓴다. 웹에서는 전부 null.
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const nativePlugin = (name) => (NATIVE && window.Capacitor.registerPlugin ? window.Capacitor.registerPlugin(name) : null);
+const Haptics = nativePlugin('Haptics'), KeepAwakeP = nativePlugin('KeepAwake'), AppP = nativePlugin('App');
+
+// 진동. 소리 끄기(🔇)를 하면 진동도 꺼진다
+function buzz(pattern) {
+  if (!save.sound) return;
+  try {
+    if (Haptics) Haptics.vibrate({ duration: Array.isArray(pattern) ? pattern[0] + (pattern[2] || 0) : pattern });
+    else if (navigator.vibrate) navigator.vibrate(pattern);
+  } catch (e) { /* 무시 */ }
+}
 // 게임하는 동안 화면이 꺼지지 않게
 let wakeLock = null;
 async function keepAwake(on) {
   try {
+    if (KeepAwakeP) { await (on ? KeepAwakeP.keepAwake() : KeepAwakeP.allowSleep()); return; }
     if (on && !wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => (wakeLock = null)); }
     if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
   } catch (e) { /* 지원 안 함 */ }
+}
+// 안드로이드 뒤로 가기 버튼: 앱이 바로 꺼지지 않고 화면 안의 '뒤로'처럼 동작
+if (AppP) {
+  AppP.addListener('backButton', () => {
+    const cut = document.querySelector('.cut, .vs-screen');
+    if (cut) return cut.click(); // 보스 등장 장면 건너뛰기
+    const ov = document.querySelector('.overlay');
+    if (ov) { // 열린 창: '아니요/계속하기' 쪽을 누르거나 바깥을 눌러 닫기
+      const soft = ov.querySelector('[data-v="no"], [data-v="stay"]');
+      return soft ? soft.click() : ov.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+    const back = document.querySelector('[data-back]');
+    if (back) return back.click();
+    if (document.querySelector('.kingdom')) return typeof title === 'function' && show(title); // 왕국 지도 → 타이틀
+    AppP.exitApp(); // 타이틀에서 뒤로 → 앱 종료 (기록은 이미 저장됨)
+  });
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && save.run) keepAwake(true); });
 document.addEventListener('pointerdown', () => audio(), { once: true });
