@@ -188,6 +188,7 @@ async function stageIntro(w, k) {
     <h2>${info.title}</h2>
     <p class="intro-cat">${catName} · 난이도 ${info.diffs.map((d) => stars(d)).join(' ~ ')}</p>
     <p>${info.desc}</p>
+    <p class="ride-note">${rideNote()}</p>
     ${best && info.kind !== 'bonus' ? `<p>최고 기록 ${'⭐'.repeat(best)}${'☆'.repeat(3 - best)}</p>` : ''}
     ${save.run && save.run.id === sid(w, k) ? `<button class="go press" data-v="resume">▶ 하던 데서 이어하기 (${save.run.state.i + 1}번째 문제)</button>` : ''}
     <button class="${save.run && save.run.id === sid(w, k) ? 'ghost' : 'go'} press" data-v="go">${info.kind === 'boss' ? '보스에게 도전! ⚔️' : '출발! 🏁'}</button>
@@ -209,6 +210,17 @@ function stageQuestions(w, info, n, boss) {
   return withMapQuestions(base, boss ? 2 : 1, info.diffs); // 🗺️ 지도 찾기가 중간중간 등장
 }
 
+// 타고 있는 탈것의 능력을 퀴즈·지도 엔진 설정으로 (core.js RIDES 참고)
+function rideAbilities(boss) {
+  return {
+    revive: rideIs('heli'),                                                   // 🚁 한 번 부활
+    rageTimer: rideIs('balloon') ? 20 : 15,                                   // 🎈 화났을 때도 +5초
+    gaugeMax: rideIs('rocket') ? 2 : 3, critWindow: rideIs('rocket') ? 8 : 5, // 🚀 로켓 부스터
+    startDamage: boss && rideIs('dragon') ? Math.round(boss.hp * 0.2) : 0,     // 🐉 시작 데미지
+    specialBonus: rideIs('dragon') ? 2 : 0,                                   // 🐉 필살기 +2
+  };
+}
+
 // 하던 스테이지 저장/삭제 (이어하기)
 const saveRun = (w, k, kind, state) => { save.run = { id: sid(w, k), kind, state }; persist(); };
 const clearRun = () => { save.run = null; persist(); keepAwake(false); };
@@ -222,7 +234,7 @@ async function playStage(w, k, resume) {
   if (info.kind === 'boss' && !resume) { $app.innerHTML = ''; await vsIntro(w.boss); } // 보스 등장 컷신
   if (info.kind === 'bonus' && w.cat === 'map') {
     return runMap({
-      title: `${w.id}-? 지도 서바이벌`, cities: survivalCities(), lives: 3,
+      title: `${w.id}-? 지도 서바이벌`, cities: survivalCities(), lives: 3, revive: rideIs('heli'),
       onQuit: quit, onEnd: (r) => { clearRun(); recordSurvival(r); stageResult(w, k, { cleared: true, stars: 1, coins: 0, map: r }); },
     });
   }
@@ -238,6 +250,7 @@ async function playStage(w, k, resume) {
       : drawQuestions(cityList(info.region), 5, info.diffs);
     return runMap({
       title: info.kind === 'boss' ? `🏰 ${w.id}-보스` : `스테이지 ${info.title}`, cities, boss: info.kind === 'boss' ? { ...w.boss, hp: info.hp } : null,
+      startDamage: info.kind === 'boss' && rideIs('dragon') ? Math.round(info.hp * 0.2) : 0, // 🐉
       resume, onSnapshot: (s) => saveRun(w, k, 'map', s),
       onQuit: quit,
       onEnd: (r) => {
@@ -252,7 +265,8 @@ async function playStage(w, k, resume) {
   runQuiz({
     title: boss ? `🏰 ${w.id}-보스` : `스테이지 ${info.title}`,
     qs: resume ? resume.qs : stageQuestions(w, info, boss ? info.hp + 6 : 8, !!boss),
-    hearts: 3, boss, timer: boss ? 20 : null,
+    hearts: 3, boss, timer: boss ? (rideIs('balloon') ? 25 : 20) : null, // 🎈 +5초
+    ...rideAbilities(boss),
     resume, onSnapshot: (s) => saveRun(w, k, 'quiz', s),
     onQuit: quit,
     onEnd: (r) => {
@@ -293,10 +307,10 @@ async function stageResult(w, k, r) {
   const beforeCur = currentNode();
   if (r.cleared) save.stages[id] = Math.max(prevStars, r.stars);
   let bonus = 0;
-  if (r.cleared) bonus = info.kind === 'bonus' ? 0 : 5 + r.stars * 2 + (firstClear ? 10 : 0);
+  if (r.cleared) bonus = info.kind === 'bonus' ? 0 : 5 + r.stars * 2 + (firstClear ? 10 : 0) + (rideIs('plane') ? 3 : 0); // 🛩️ 알뜰 비행
   if (info.kind === 'bonus') { save.speedBest = Math.max(save.speedBest, r.correct); }
   if (info.kind === 'boss' && r.cleared) save.bosses++;
-  addCoins(bonus);
+  bonus = addCoins(bonus); // 🏴‍☠️ 해적선이면 1.5배로 들어옴
   persist();
   // 일반 스테이지를 깼으면 지도로 안 돌아가고 바로 다음 스테이지로 갈 수 있다 (보스 성 직전까지)
   const nx = r.cleared && info.kind !== 'boss' && info.kind !== 'bonus' ? nextStageOf(w, k) : null;
@@ -426,7 +440,7 @@ function shop() {
       <div class="label">🛩️ 탈것 (지도에서 정후와 함께 다녀요)</div>
       <div class="shop-grid">${Object.entries(RIDES).map(([k, r]) => {
         const own = save.rides.includes(k), on = save.ride === k;
-        return `<div class="shop-item card ${on ? 'on' : ''}"><span class="big">${r.ic}</span><b>${r.name}</b>
+        return `<div class="shop-item card ${on ? 'on' : ''}"><span class="big">${r.ic}</span><b>${r.name}</b><small class="ab">✨ ${r.ab}</small><small>${r.desc}</small>
           ${own ? `<button class="buy press ${on ? 'using' : ''}" data-ride="${k}">${on ? '타는 중' : '타기'}</button>`
             : `<button class="buy press" data-rbuy="${k}" ${save.coins < r.price ? 'disabled' : ''}>🪙 ${r.price}</button>`}</div>`;
       }).join('')}</div>`;
@@ -469,7 +483,7 @@ function freeMenu() {
     if (k === 'map') return show(freeMapSetup);
     if (k === 'survival') {
       const start = () => runMap({
-        title: '🎯 지도 서바이벌', cities: survivalCities(), lives: 3, onQuit: () => show(freeMenu),
+        title: '🎯 지도 서바이벌', cities: survivalCities(), lives: 3, revive: rideIs('heli'), onQuit: () => show(freeMenu),
         onEnd: (r) => {
           const best = recordSurvival(r);
           freeResult({ correct: 0, total: 0, coins: 0, title: `${r.total.toLocaleString()}점!`, sub: `도시 ${r.log.length}곳 · 최고 ${r.bestStreak}연속${best ? ' · 🎉 새 최고 기록!' : ` · 최고 기록 ${save.survivalBest.toLocaleString()}점`}`, again: start });

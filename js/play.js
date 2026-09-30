@@ -39,40 +39,32 @@ function mapQuestion(city) {
  * onPick(guess) : 위치를 찍을 때마다
  * 반환: { hasGuess(), reveal() → { km, pts } }  (찍은 곳과 실제 위치를 함께 보여 줌)
  */
-function mapPicker(wrap, city, onPick) {
+function mapPicker(wrap, city, onPick, opts = {}) {
   const R = REGIONS[city.r] || REGIONS.world;
   const land = window.MAP_DATA || { world: [], korea: [] };
   const paths = land.world.map((d) => `<path class="land" d="${d}"/>`).join('')
     + (city.r === 'kr' ? land.korea.map((d) => `<path class="land kr" d="${d}"/>`).join('') : '');
-  wrap.innerHTML = `<svg preserveAspectRatio="xMidYMid meet"><g class="world" transform="scale(${R.kx},1)">${paths}<g class="marks"></g></g></svg>
+  wrap.innerHTML = `<svg preserveAspectRatio="xMidYMid meet"><g class="world" transform="scale(${R.kx},1)">${paths}<g class="radar"></g><g class="marks"></g></g></svg>
     <div class="zoom"><button data-z="in" aria-label="확대">+</button><button data-z="out" aria-label="축소">−</button></div>`;
-  const svg = wrap.querySelector('svg'), g = svg.querySelector('.world'), marks = svg.querySelector('.marks');
+  const svg = wrap.querySelector('svg'), marks = svg.querySelector('.marks');
+
+  // ── 부드럽게 움직이는 원리 ──
+  // 나라 모양 241개(1MB 넘는 그림)를 손가락이 움직일 때마다 다시 그리면 폰에서 끊긴다.
+  // 그래서 움직이는 동안에는 이미 그려 둔 그림을 CSS transform 으로 밀고 키우기만 하고(GPU 가 처리),
+  // 손을 떼고 멈춘 뒤에만 viewBox 를 바꿔 선명하게 한 번 다시 그린다(commit).
+  //   drawn : 지금 실제로 그려져 있는 viewBox       vb : 사용자가 보고 있어야 할 viewBox
   let vb = [R.box[0] * R.kx, R.box[1], R.box[2] * R.kx, R.box[3]];
   const home0 = vb.slice();
-  const setVB = () => svg.setAttribute('viewBox', vb.join(' '));
-  setVB();
-  const toMap = (cx, cy) => { const p = svg.createSVGPoint(); p.x = cx; p.y = cy; const m = p.matrixTransform(g.getScreenCTM().inverse()); return { lon: m.x, lat: -m.y }; };
-  const pxPerUnit = () => svg.getScreenCTM().a; // viewBox 1단위당 화면 px
+  let drawn = vb.slice();
+  svg.setAttribute('viewBox', drawn.join(' '));
 
-  let guess = null, done = false;
-  const pinR = () => 8 / pxPerUnit(); // 확대해도 화면에서 항상 비슷한 크기
-  // g 가 가로로 kx 배 줄어 있으니 rx 를 늘려서 동그랗게 보이게 한다
-  const pin = (cls, lon, lat) => `<ellipse class="${cls}" cx="${lon}" cy="${-lat}" rx="${pinR() / R.kx}" ry="${pinR()}"/>`;
-  function redraw() {
-    if (!done) { marks.innerHTML = guess ? pin('pin-guess', guess.lon, guess.lat) : ''; return; }
-    marks.innerHTML = (guess ? `<line class="pin-line" x1="${guess.lon}" y1="${-guess.lat}" x2="${city.lon}" y2="${-city.lat}"/>` + pin('pin-guess', guess.lon, guess.lat) : '')
-      + pin('pin-real', city.lon, city.lat);
-  }
-  // ── 확대/이동 ──
-  // 원칙: 손가락이 처음 닿은 지도 위의 점(anchor)이 끝까지 그 손가락 아래에 붙어 있게 한다.
-  //  · 한 손가락: 끌기  · 두 손가락: 벌리고 오므리며 동시에 이동  · 짧게 탭: 위치 찍기
-  //  · 손가락 수가 바뀌면(두 개 → 하나) 그 순간 위치로 다시 붙잡아서 지도가 튀지 않게
-  const MIN_W = home0[2] / 40, MAX_W = home0[2] * 1.5;
-  // viewBox v 일 때의 화면 배치 (preserveAspectRatio=meet 를 직접 계산 — 아직 그리지 않은 viewBox 에도 쓸 수 있게)
+  // viewBox v 일 때의 화면 배치 (preserveAspectRatio=meet 를 직접 계산). svg 는 transform 이 걸릴 수 있으니 틀(wrap) 기준
   function frame(v) {
-    const r = svg.getBoundingClientRect();
+    // 틀의 테두리(border) 안쪽 = svg 가 차지하는 영역. client* 는 확대 전 CSS px 라서 Z 를 곱해 화면 px 로
+    const b = wrap.getBoundingClientRect();
+    const r = { left: b.left + wrap.clientLeft * Z, top: b.top + wrap.clientTop * Z, width: wrap.clientWidth * Z, height: wrap.clientHeight * Z };
     const ppu = Math.min(r.width / v[2], r.height / v[3]);
-    return { ppu, ox: r.left + (r.width - v[2] * ppu) / 2, oy: r.top + (r.height - v[3] * ppu) / 2 };
+    return { r, ppu, ox: r.left + (r.width - v[2] * ppu) / 2, oy: r.top + (r.height - v[3] * ppu) / 2 };
   }
   const screenToVB = (cx, cy, v = vb) => { const f = frame(v); return { x: v[0] + (cx - f.ox) / f.ppu, y: v[1] + (cy - f.oy) / f.ppu }; };
   // 크기 w×h 인 viewBox 에서 지도 위의 점 p 가 화면 (cx, cy) 에 오도록
@@ -84,25 +76,78 @@ function mapPicker(wrap, city, onPick) {
     const cy = Math.min(home0[1] + home0[3] + my, Math.max(home0[1] - my, v[1] + v[3] / 2));
     return [cx - v[2] / 2, cy - v[3] / 2, v[2], v[3]];
   }
-  let raf = 0;
-  function apply(v) { // 계산은 바로, 그리기는 화면 새로 고칠 때 한 번만 (부드럽게)
-    vb = clampVB(v);
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; setVB(); redraw(); });
+
+  let guess = null, done = false, interacting = false, raf = 0;
+  const pinR = () => 8 / frame(drawn).ppu; // 확대해도 화면에서 항상 비슷한 크기
+  // g 가 가로로 kx 배 줄어 있으니 rx 를 늘려서 동그랗게 보이게 한다
+  const pin = (cls, lon, lat) => `<ellipse class="${cls}" cx="${lon}" cy="${-lat}" rx="${pinR() / R.kx}" ry="${pinR()}"/>`;
+  function redraw() {
+    if (!done) { marks.innerHTML = guess ? pin('pin-guess', guess.lon, guess.lat) : ''; return; }
+    marks.innerHTML = (guess ? `<line class="pin-line" x1="${guess.lon}" y1="${-guess.lat}" x2="${city.lon}" y2="${-city.lat}"/>` + pin('pin-guess', guess.lon, guess.lat) : '')
+      + pin('pin-real', city.lon, city.lat);
   }
+  // 움직이는 중: drawn → vb 로 보이도록 transform 만 계산 (다시 그리지 않음)
+  function paintTransform() {
+    const f = frame(drawn), s = drawn[2] / vb[2];
+    const tx = ((f.ox - f.r.left) * (1 - s) + (drawn[0] - vb[0]) * f.ppu * s) / Z;
+    const ty = ((f.oy - f.r.top) * (1 - s) + (drawn[1] - vb[1]) * f.ppu * s) / Z;
+    svg.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  }
+  // 멈춘 뒤: 실제 viewBox 를 바꿔 선명하게 다시 그리기
+  function commit() {
+    drawn = vb.slice();
+    svg.setAttribute('viewBox', drawn.join(' '));
+    svg.style.transform = '';
+    redraw();
+  }
+  function apply(v) {
+    vb = clampVB(v);
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (interacting) paintTransform(); else commit(); });
+  }
+  function settle() { interacting = false; cancelAnimationFrame(raf); raf = 0; commit(); }
+
+  const MIN_W = home0[2] / 40, MAX_W = home0[2] * 1.5;
   const clampW = (w) => Math.min(MAX_W, Math.max(MIN_W, w));
   function zoomAt(factor, cx, cy) {
     const p = screenToVB(cx, cy), w = clampW(vb[2] / factor);
     apply(place(p, cx, cy, w, vb[3] * (w / vb[2])));
   }
-  function animateZoom(factor, cx, cy) { // + / − 버튼은 짧게 스르륵
-    const steps = 8, f = Math.pow(factor, 1 / steps);
+  function animateZoom(factor, cx, cy) { // + / − 버튼: 짧게 스르륵 (움직이는 동안은 transform, 끝나면 선명하게)
+    stopFling(); interacting = true;
+    const steps = 10, f = Math.pow(factor, 1 / steps);
     let i = 0;
-    (function step() { zoomAt(f, cx, cy); if (++i < steps) requestAnimationFrame(step); })();
+    (function step() { zoomAt(f, cx, cy); if (++i < steps) requestAnimationFrame(step); else requestAnimationFrame(settle); })();
   }
 
+  // ── 관성: 튕기듯 손을 떼면 미끄러지다 서서히 멈춤 ──
+  let fling = 0, samples = [];
+  function stopFling() { if (fling) cancelAnimationFrame(fling); fling = 0; }
+  function startFling() {
+    const now = performance.now();
+    const recent = samples.filter((s) => now - s.t < 90);
+    if (recent.length < 2) return false;
+    const a = recent[0], b = recent[recent.length - 1], dt = Math.max(1, b.t - a.t);
+    let vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt; // 화면 px / ms
+    if (Math.hypot(vx, vy) < 0.25) return false;
+    let last = now;
+    const step = (t) => {
+      const d = Math.min(40, t - last); last = t;
+      const ppu = frame(vb).ppu;
+      apply([vb[0] - (vx * d) / ppu, vb[1] - (vy * d) / ppu, vb[2], vb[3]]);
+      const decay = Math.pow(0.94, d / 16);
+      vx *= decay; vy *= decay;
+      if (Math.hypot(vx, vy) > 0.02) fling = requestAnimationFrame(step); else { fling = 0; settle(); }
+    };
+    fling = requestAnimationFrame(step);
+    return true;
+  }
+
+  // ── 손가락 제스처 ──
+  // 원칙: 손가락이 처음 닿은 지도 위의 점(anchor)이 끝까지 그 손가락 아래에 붙어 있게 한다.
+  //  · 한 손가락: 끌기(+관성)  · 두 손가락: 벌리고 오므리며 동시에 이동  · 짧게 탭: 위치 찍기
   const pointers = new Map();
   let gest = null, moved = false, downPos = null;
-  function startGesture() { // 지금 닿아 있는 손가락 기준으로 다시 붙잡기
+  function startGesture() { // 지금 닿아 있는 손가락 기준으로 다시 붙잡기 (손가락 수가 바뀌어도 튀지 않게)
     const pts = [...pointers.values()];
     if (pts.length >= 2) {
       const [a, b] = pts;
@@ -114,8 +159,11 @@ function mapPicker(wrap, city, onPick) {
   wrap.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.zoom')) return;
     try { wrap.setPointerCapture(e.pointerId); } catch (err) { /* 일부 기기에서 실패해도 터치는 계속 받는다 */ }
+    const wasFlinging = !!fling;
+    stopFling();
+    interacting = true;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.size === 1) { moved = false; downPos = { x: e.clientX, y: e.clientY }; } else moved = true;
+    if (pointers.size === 1) { moved = wasFlinging; downPos = { x: e.clientX, y: e.clientY }; samples = []; } else moved = true;
     startGesture();
   });
   wrap.addEventListener('pointermove', (e) => {
@@ -128,29 +176,51 @@ function mapPicker(wrap, city, onPick) {
       apply(place(gest.anchor, (a.x + b.x) / 2, (a.y + b.y) / 2, w, gest.h0 * (w / gest.w0)));
     } else if (gest.type === 'pan' && pts.length === 1) {
       if (!moved && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 8) moved = true;
-      if (moved) apply(place(gest.anchor, e.clientX, e.clientY, vb[2], vb[3]));
+      if (moved) {
+        apply(place(gest.anchor, e.clientX, e.clientY, vb[2], vb[3]));
+        samples.push({ t: performance.now(), x: e.clientX, y: e.clientY });
+        if (samples.length > 8) samples.shift();
+      }
     }
   });
   const up = (e) => {
     if (!pointers.has(e.pointerId)) return;
+    const wasPan = gest && gest.type === 'pan';
     pointers.delete(e.pointerId);
-    if (pointers.size === 0 && !moved && !done) {
-      guess = toMap(e.clientX, e.clientY);
-      redraw(); sfx('tap');
-      if (onPick) onPick(guess);
+    if (pointers.size === 0) {
+      if (!moved && !done) { // 짧게 탭 → 위치 찍기
+        const p = screenToVB(e.clientX, e.clientY);
+        guess = { lon: p.x / R.kx, lat: -p.y };
+        settle(); sfx('tap');
+        if (onPick) onPick(guess);
+      } else if (!(wasPan && moved && startFling())) settle();
     }
     startGesture();
   };
   wrap.addEventListener('pointerup', up);
   wrap.addEventListener('pointercancel', up);
-  wrap.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY); }, { passive: false });
+  let wheelTimer = 0;
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault(); stopFling(); interacting = true;
+    zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+    clearTimeout(wheelTimer); wheelTimer = setTimeout(settle, 160);
+  }, { passive: false });
   wrap.querySelectorAll('[data-z]').forEach((b) => (b.onclick = () => {
-    const r = svg.getBoundingClientRect(); animateZoom(b.dataset.z === 'in' ? 2 : 0.5, r.left + r.width / 2, r.top + r.height / 2);
+    const r = wrap.getBoundingClientRect(); animateZoom(b.dataset.z === 'in' ? 2 : 0.5, r.left + r.width / 2, r.top + r.height / 2);
   }));
+
+  // 🛸 UFO 레이더: 정답 근처에 탐지 원 (정답이 딱 가운데가 되지 않게 조금 비켜서)
+  if (opts.radar ?? rideIs('ufo')) {
+    const rad = city.r === 'kr' ? 0.45 : 11; // 위도 기준 약 50km / 1,200km
+    const ang = Math.random() * Math.PI * 2, off = rad * (0.25 + Math.random() * 0.35);
+    const cx = city.lon + (Math.cos(ang) * off) / Math.cos((city.lat * Math.PI) / 180), cy = -(city.lat + Math.sin(ang) * off);
+    svg.querySelector('.radar').innerHTML = `<ellipse class="radar-ring" cx="${cx}" cy="${cy}" rx="${rad / Math.cos((city.lat * Math.PI) / 180)}" ry="${rad}"/>`;
+  }
 
   return {
     hasGuess: () => !!guess,
     reveal() {
+      stopFling();
       done = true;
       const km = guess ? haversine(guess.lat, guess.lon, city.lat, city.lon) : Infinity;
       const pts = guess ? Math.round(1000 * Math.exp(-km / R.scale)) : 0;
@@ -163,7 +233,7 @@ function mapPicker(wrap, city, onPick) {
       const s = Math.max(w / home0[2], h / home0[3]);
       const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
       vb = [cx - (home0[2] * s) / 2, cy - (home0[3] * s) / 2, home0[2] * s, home0[3] * s];
-      setVB(); redraw();
+      settle();
       return { km, pts };
     },
   };
@@ -216,7 +286,7 @@ function runQuiz(cfg) {
     i: 0, results: [], streak: 0, maxStreak: 0, gained: 0, coins: 0,
     hearts: cfg.hearts ?? null, maxHearts: cfg.hearts ?? 0,
     hp: cfg.boss ? cfg.boss.hp : 0, timerLen: cfg.timer || 0,
-    gauge: 0, rage: false, shield: false, boost: 0, magnet: false,
+    gauge: 0, rage: false, shield: false, boost: 0, magnet: false, revived: false,
     ...(cfg.resume || {}),
     over: false, timerId: null, left: 0, frozen: false, speedLeft: cfg.speed || 0,
   };
@@ -235,8 +305,8 @@ function runQuiz(cfg) {
   }
   function snapshot() {
     if (!cfg.onSnapshot || cfg.speed) return;
-    const { i, results, streak, maxStreak, gained, coins, hearts, maxHearts, hp, timerLen, gauge, rage, shield, boost, magnet } = st;
-    cfg.onSnapshot({ i, results, streak, maxStreak, gained, coins, hearts, maxHearts, hp, timerLen, gauge, rage, shield, boost, magnet, qs: cfg.qs });
+    const { i, results, streak, maxStreak, gained, coins, hearts, maxHearts, hp, timerLen, gauge, rage, shield, boost, magnet, revived } = st;
+    cfg.onSnapshot({ i, results, streak, maxStreak, gained, coins, hearts, maxHearts, hp, timerLen, gauge, rage, shield, boost, magnet, revived, qs: cfg.qs });
   }
 
   function hud() {
@@ -262,7 +332,8 @@ function runQuiz(cfg) {
         <div class="hpbar"><i style="width:${(st.hp / cfg.boss.hp) * 100}%"></i></div><small>HP ${st.hp} / ${cfg.boss.hp}</small></div>
     </div>`;
   }
-  const gaugeHtml = () => [0, 1, 2].map((i) => `<i class="${i < st.gauge ? 'on' : ''}"></i>`).join('') + `<span>${st.gauge >= 3 ? '필살기 준비!' : '필살기'}</span>`;
+  const GAUGE = cfg.gaugeMax || 3; // 🚀 로켓: 2칸
+  const gaugeHtml = () => [...Array(GAUGE).keys()].map((i) => `<i class="${i < st.gauge ? 'on' : ''}"></i>`).join('') + `<span>${st.gauge >= GAUGE ? '필살기 준비!' : '필살기'}</span>`;
 
   function render() {
     if (st.over) return;
@@ -312,6 +383,7 @@ function runQuiz(cfg) {
     $app.querySelectorAll('[data-item]').forEach((b) => (b.onclick = () => useItem(b.dataset.item)));
     if (cfg.boss) {
       if (st.i === 0 && !cfg.resume) setTimeout(() => say(L.start), 300);
+      if (st.i === 0 && !cfg.resume && cfg.startDamage && !st.breathed) dragonBreath();
       if (st.rage && cfg.boss.img === 'boss-6' && !isMap) inkSplat(); // 문어 보스 분노: 먹물
     }
     if (cfg.timer) startTimer();
@@ -425,7 +497,7 @@ function runQuiz(cfg) {
     if (st.hp <= 0) {
       koEffect(boss, me, L);
     } else if (!st.rage && st.hp <= cfg.boss.hp / 2) {
-      st.rage = true; st.timerLen = Math.min(st.timerLen || 20, 15);
+      st.rage = true; st.timerLen = Math.min(st.timerLen || 20, cfg.rageTimer || 15);
       document.getElementById('arena').classList.add('rage');
       say(`😡 ${L.rage}`, 2600);
       sfx('roar');
@@ -442,6 +514,26 @@ function runQuiz(cfg) {
     me.classList.remove('hurt'); void me.offsetWidth; me.classList.add('hurt');
     sfx('hurt'); buzz([60, 40, 60]);
     if (st.hearts !== null && st.hearts <= 0) say(L.win, 4000);
+  }
+  // 🐉 드래곤 브레스: 보스전이 시작되면 불을 뿜어 보스 HP 를 깎고 시작
+  function dragonBreath() {
+    st.breathed = true;
+    const dmg = cfg.startDamage;
+    st.hp = Math.max(1, st.hp - dmg);
+    snapshot();
+    setTimeout(async () => {
+      const boss = document.getElementById('boss'), me = document.getElementById('me');
+      if (!boss || !me) return;
+      toast('🐉 드래곤 브레스!');
+      await shoot(me.querySelector('#who'), boss.querySelector('.boss-art'), '🔥', { big: true });
+      if (!boss.isConnected) return;
+      sfx('hit'); buzz(40);
+      boss.querySelector('.hpbar i').style.width = `${(st.hp / cfg.boss.hp) * 100}%`;
+      boss.querySelector('small').textContent = `HP ${st.hp} / ${cfg.boss.hp}`;
+      boss.classList.remove('hit'); void boss.offsetWidth; boss.classList.add('hit');
+      burst(boss.querySelector('.boss-art'), `-${dmg}<small>드래곤 브레스!</small>`, 'special');
+      say(pick(L.hit), 1500);
+    }, 1100);
   }
 
   // 4지선다 답
@@ -488,17 +580,16 @@ function runQuiz(cfg) {
       const boosted = st.boost > 0;
       if (boosted) st.boost--;
       const coins = (q.d + (map ? 1 : 0)) * (fever ? 2 : 1) * (st.magnet ? 2 : 1) * (boosted ? 2 : 1);
-      st.coins += coins;
-      addCoins(coins, el);
+      st.coins += addCoins(coins, el); // 🏴‍☠️ 해적선이면 1.5배로 들어옴
       if (cfg.onWrongFixed) cfg.onWrongFixed(q);
       sfx(fever ? 'fever' : 'correct'); buzz(15);
       if (st.streak === 5) { document.body.classList.add('fever'); toast('🔥 피버 타임! 코인 2배!'); sikseven(document.getElementById('who')); }
       else if (st.streak > 5 && st.streak % 5 === 0) { confetti(50); toast(`🔥 ${st.streak}연속!`); sikseven(document.getElementById('who')); }
       if (cfg.boss) {
-        const special = st.gauge >= 3;
-        const crit = !!cfg.timer && spent <= 5;
+        const special = st.gauge >= GAUGE;
+        const crit = !!cfg.timer && spent <= (cfg.critWindow || 5); // 🚀 로켓: 8초
         st.gauge = special ? 0 : st.gauge + 1;
-        let dmg = 1 + (crit ? 1 : 0) + (special ? 2 : 0);
+        let dmg = 1 + (crit ? 1 : 0) + (special ? 2 + (cfg.specialBonus || 0) : 0); // 🐉 드래곤: 필살기 +2
         if (boosted) dmg *= 2;
         st.pending = dmg;
         bossHit(dmg, { crit, special });
@@ -513,7 +604,13 @@ function runQuiz(cfg) {
       save.wrong = save.wrong.slice(0, 300);
       if (st.hearts !== null) {
         if (st.shield) { st.shield = false; blocked = true; toast('🛡️ 방패가 막아 줬어!'); refreshHearts('bump'); }
-        else { st.hearts--; shake(); buzz([60, 40, 60]); refreshHearts('hurt'); }
+        else {
+          st.hearts--; shake(); buzz([60, 40, 60]); refreshHearts('hurt');
+          if (st.hearts <= 0 && cfg.revive && !st.revived) { // 🚁 헬리콥터: 한 번 부활
+            st.revived = true; st.hearts = 1;
+            setTimeout(() => { refreshHearts('bump'); toast('🚁 구조 헬기 출동! 하트 1개로 부활!'); sfx('power'); }, 500);
+          }
+        }
       }
       if (cfg.boss) bossAttack(blocked);
     }
@@ -586,6 +683,16 @@ function runMap(cfg) {
     if (out()) return end();
     if (cfg.onSnapshot) cfg.onSnapshot({ i: st.i, total: st.total, log: st.log, bossHp: st.bossHp, cities: cfg.cities });
     if (cfg.boss && st.i === 0 && !cfg.resume) setTimeout(() => say(bossLines(cfg.boss).start), 400);
+    if (cfg.boss && st.i === 0 && !cfg.resume && cfg.startDamage && !st.breathed) { // 🐉 드래곤 브레스
+      st.breathed = true; st.bossHp -= cfg.startDamage;
+      setTimeout(() => {
+        const b = document.getElementById('boss'); if (!b) return;
+        toast('🐉 드래곤 브레스!'); sfx('hit');
+        b.querySelector('.hpbar i').style.width = `${(Math.max(0, st.bossHp) / cfg.boss.hp) * 100}%`;
+        b.querySelector('small').textContent = `HP ${Math.max(0, st.bossHp).toLocaleString()}`;
+        burst(b.querySelector('.boss-art'), `-${cfg.startDamage}<small>드래곤 브레스!</small>`, 'special');
+      }, 1100);
+    }
     const city = cfg.cities[st.i];
     const R = REGIONS[city.r] || REGIONS.world;
     const label = city.r === 'kr' ? esc(city.n) : `${esc(city.n)} <small>(${esc(city.co)})</small>`;
@@ -624,7 +731,10 @@ function runMap(cfg) {
       let gained = pts, lost = false;
       if (st.lives !== null) { // 서바이벌: 가까우면 연속 배율, 멀면 하트 -1
         if (pts >= MAP_OK) { st.streak++; st.bestStreak = Math.max(st.bestStreak, st.streak); gained = Math.round(pts * mult()); }
-        else { st.streak = 0; st.lives--; lost = true; shake(); const h = document.querySelector('.hearts'); if (h) h.outerHTML = heartsHtml('hurt'); }
+        else {
+          st.streak = 0; st.lives--; lost = true; shake(); const h = document.querySelector('.hearts'); if (h) h.outerHTML = heartsHtml('hurt');
+          if (st.lives <= 0 && cfg.revive && !st.revived) { st.revived = true; st.lives = 1; setTimeout(() => { const h2 = document.querySelector('.hearts'); if (h2) h2.outerHTML = heartsHtml('bump'); toast('🚁 구조 헬기 출동! 하트 1개로 부활!'); sfx('power'); }, 500); } // 🚁 헬리콥터
+        }
       }
       st.total += gained;
       st.log.push({ city, km, pts });

@@ -74,17 +74,22 @@ const JH = { // 정후 표정
 };
 if (ASSETS['bg-sky']) { document.body.classList.add('has-bg'); document.body.style.setProperty('--bg-img', `url(${ASSETS['bg-sky']})`); }
 
-// 탈것 (상점에서 산다) — 지도에서 정후 옆에, 화면 전환 때 날아간다
+// 탈것 (상점에서 산다) — 지도에서 정후 옆에, 화면 전환 때 날아간다.
+// 타고 있는 탈것 하나의 특수 능력(ab)만 켜진다. 실제 효과는 rideIs() 로 확인하는 곳에서 적용:
+//   plane → world.js stageResult · balloon/heli/rocket/dragon → world.js playStage 가 cfg 로 넘김
+//   ship → addCoins · ufo → play.js mapPicker
 const RIDES = {
-  plane: { name: '꼬마 비행기', ic: '🛩️', price: 0 },
-  balloon: { name: '열기구', ic: '🎈', price: 60 },
-  heli: { name: '헬리콥터', ic: '🚁', price: 100 },
-  ship: { name: '해적선', ic: '🏴‍☠️', price: 150 },
-  rocket: { name: '로켓', ic: '🚀', price: 220 },
-  ufo: { name: 'UFO', ic: '🛸', price: 320 },
-  dragon: { name: '드래곤', ic: '🐉', price: 500 },
+  plane: { name: '꼬마 비행기', ic: '🛩️', price: 0, ab: '알뜰 비행', desc: '스테이지를 깰 때마다 코인 +3' },
+  balloon: { name: '열기구', ic: '🎈', price: 60, ab: '느긋한 비행', desc: '보스전 제한 시간 +5초 (화났을 때도)' },
+  ship: { name: '해적선', ic: '🏴‍☠️', price: 120, ab: '보물 사냥꾼', desc: '얻는 코인 1.5배' },
+  heli: { name: '헬리콥터', ic: '🚁', price: 150, ab: '구조 출동', desc: '스테이지마다 한 번, 하트가 다 떨어지면 하트 1개로 부활' },
+  rocket: { name: '로켓', ic: '🚀', price: 220, ab: '로켓 부스터', desc: '크리티컬 시간 5초→8초, 필살기 게이지 3칸→2칸' },
+  ufo: { name: 'UFO', ic: '🛸', price: 280, ab: '외계 레이더', desc: '지도 문제에서 정답 근처에 탐지 원이 보여요' },
+  dragon: { name: '드래곤', ic: '🐉', price: 500, ab: '드래곤 브레스', desc: '보스 HP를 20% 깎고 시작, 필살기 데미지 +2' },
 };
 const rideIcon = () => (RIDES[save.ride] || RIDES.plane).ic;
+const rideIs = (k) => (save.ride || 'plane') === k;
+const rideNote = () => { const r = RIDES[save.ride] || RIDES.plane; return `${r.ic} <b>${r.ab}</b>: ${r.desc}`; };
 
 // ───────── 효과음 (WebAudio 로 직접 만든 8비트 소리, 파일 없음) ─────────
 let actx = null;
@@ -258,12 +263,14 @@ function addXp(gain) {
   if (newRank) setTimeout(() => celebrate(`레벨 업! Lv.${after}`, `새 호칭 획득! 이제 정후는 <b>${rankOf(after)}</b>!`), document.querySelector('.qa') ? 3200 : 600);
   else setTimeout(() => { toast(`🎉 레벨 업! Lv.${after}`); sfx('unlock'); }, 400);
 }
-function addCoins(n, el) {
-  if (!n) return;
+function addCoins(n, el) { // 실제로 받은 코인 수를 돌려준다 (탈것 보너스 포함)
+  if (!n) return 0;
+  if (rideIs('ship')) n = Math.round(n * 1.5); // 🏴‍☠️ 보물 사냥꾼
   save.coins += n;
   if (el) floaty(`🪙+${n}`, el, 'coin-float');
   const hud = document.querySelector('[data-coins]');
   if (hud) { hud.textContent = save.coins.toLocaleString(); hud.parentElement.classList.remove('bump'); void hud.offsetWidth; hud.parentElement.classList.add('bump'); }
+  return n;
 }
 
 // ───────── 문제 출처 ─────────

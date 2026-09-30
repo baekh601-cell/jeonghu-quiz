@@ -536,3 +536,10 @@ body.wide .qa.has-map .quizmap { flex: none; min-height: 260px; height: calc(100
 .locator .ring { fill: none; stroke: var(--coral); stroke-width: 2; vector-effect: non-scaling-stroke; animation: pulseRing 1.2s ease-out infinite; }
 @keyframes pulseRing { 50% { stroke-opacity: .3; } }
 @media (max-height: 460px) { .silhouette { height: 110px; } }
+
+/* 지도: 움직이는 동안은 그려 둔 그림을 GPU 로 밀고 키우기만 (js/play.js mapPicker) */
+.mapwrap svg { overflow: visible; transform-origin: 0 0; will-change: transform; }
+.radar-ring { fill: #3ddc9733; stroke: var(--mint); stroke-width: 2.5; stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; animation: radarPulse 1.4s ease-in-out infinite; }
+@keyframes radarPulse { 50% { fill: #3ddc9766; } }
+.ride-note { background: var(--sun-soft); border: 2px dashed #e0a800; border-radius: 12px; padding: 6px 10px; font-size: 14px; }
+.shop-item small.ab { color: var(--coral); font-size: 14px; }
