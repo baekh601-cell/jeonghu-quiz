@@ -142,6 +142,7 @@ function runQuiz(cfg) {
     });
     document.getElementById('who').innerHTML = ok ? JH.correct() : JH.wrong();
     st.results.push(ok);
+    save.recent = [...(save.recent || []), ok].slice(-30);
     save.answered++;
     save.seen[q.k] = true;
     const pc = (save.perCat[q.cat] = save.perCat[q.cat] || { n: 0, ok: 0 });

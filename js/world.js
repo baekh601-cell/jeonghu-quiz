@@ -12,8 +12,12 @@ const WORLDS = [
   { id: 8, name: '모르쇠 대왕의 성', cat: 'mix', ic: '🏰', sky: '#d9ccff', ground: '#8f7ad8', deco: ['🏰', '⚡', '🦇', '💎', '🔮'], boss: { name: '모르쇠 대왕', emoji: '😈', img: 'boss-8' } },
 ];
 const STAGE_KEYS = ['1', '2', '3', 'B', '4', '5', 'C'];
-const STAGE_DIFF = { 1: [1], 2: [1], 3: [1, 2], 4: [2], 5: [2, 3], C: [2, 3] };
-const HARD_DIFF = { 1: [2], 2: [2, 3], 3: [2, 3], 4: [3], 5: [3], C: [3] };
+// 스테이지별 기본 난이도 (1 쉬움 · 2 보통 · 3 어려움). 정후 수준에 맞춰 처음부터 보통 이상.
+// 실제로는 adaptDiffs() 가 최근 정답률에 따라 한 단계 올리거나 내린다.
+const STAGE_DIFF = { 1: [2], 2: [2], 3: [2, 3], 4: [2, 3], 5: [3], C: [2, 3] }; // 월드 1~2
+const MID_DIFF = { 1: [2, 3], 2: [2, 3], 3: [3], 4: [3], 5: [3], C: [3] };    // 월드 3~6
+const HARD_DIFF = { 1: [3], 2: [3], 3: [3], 4: [3], 5: [3], C: [3] };         // 월드 8
+const MAP_DIFF = { 1: [1, 2], 2: [2], 3: [2, 3], 4: [2, 3], 5: [3], C: [2, 3] }; // 월드 7 (도시 난이도)
 const TOTAL_STARS = WORLDS.length * 6 * 3;
 
 // ───────── 진행 상태 ─────────
@@ -150,8 +154,10 @@ function toMap(opts) { $app.classList.remove('on-map'); show(() => kingdom(opts)
 // ───────── 스테이지 ─────────
 function stageInfo(w, k) {
   const hard = w.cat === 'mix';
-  const diffs = (hard ? HARD_DIFF : STAGE_DIFF)[k] || [1, 2, 3];
-  if (k === 'B') return { kind: 'bonus', title: `${w.id}-? 보너스`, desc: '45초 스피드 퀴즈! 맞힐 때마다 코인을 받아요.', diffs: [1, 2] };
+  const base = w.cat === 'map' ? MAP_DIFF : hard ? HARD_DIFF : w.id <= 2 ? STAGE_DIFF : MID_DIFF;
+  const diffs = w.cat === 'map' ? base[k] : adaptDiffs(base[k] || [2, 3]); // 지도는 도시 난이도, 나머지는 실력 따라 조정
+  const mixNote = CATS[w.cat] ? `${CATS[w.cat].name} 절반 + 여러 주제 섞어서` : '모든 주제 섞어서';
+  if (k === 'B') return { kind: 'bonus', title: `${w.id}-? 보너스`, desc: `45초 스피드 퀴즈! ${mixNote}. 맞힐 때마다 코인을 받아요.`, diffs: adaptDiffs([2]) };
   if (k === 'C') {
     const hp = w.cat === 'map' ? 4500 : hard ? 12 : 8;
     return { kind: 'boss', title: `${w.id}-🏰 ${w.boss.name}`, desc: w.cat === 'map' ? `도시 위치를 맞혀서 보스의 HP ${hp.toLocaleString()}을 깎아라!` : `문제를 맞혀서 보스의 HP ${hp}을 깎아라! 문제마다 20초 제한, 하트 3개.`, diffs, hp };
@@ -160,7 +166,7 @@ function stageInfo(w, k) {
     const region = { 1: 'kr', 2: 'world', 3: 'kr', 4: 'world', 5: null }[k];
     return { kind: 'map', title: `${w.id}-${k}`, desc: `${region === 'kr' ? '🇰🇷 대한민국' : region === 'world' ? '🌍 세계' : '🇰🇷+🌍 섞어서'} 도시 5곳. 평균 300점 이상이면 클리어!`, diffs, region };
   }
-  return { kind: 'quiz', title: `${w.id}-${k}`, desc: `문제 8개 · 하트 3개. 3번 틀리면 실패!`, diffs };
+  return { kind: 'quiz', title: `${w.id}-${k}`, desc: `문제 8개 (${mixNote}) · 하트 3개. 3번 틀리면 실패!`, diffs };
 }
 
 async function stageIntro(w, k) {
@@ -181,9 +187,8 @@ async function stageIntro(w, k) {
 }
 
 function stageQuestions(w, info, n) {
-  if (w.cat === 'mix') return mixedQuestions(n, info.diffs);
-  const cat = w.cat === 'map' ? pick(['capital', 'flag']) : w.cat;
-  return drawQuestions(questionsFor(cat), n, info.diffs);
+  if (w.cat === 'mix' || w.cat === 'map') return mixedQuestions(n, info.diffs);
+  return themedQuestions(w.cat, n, info.diffs); // 월드 주제 절반 + 다른 주제 절반
 }
 
 function playStage(w, k) {

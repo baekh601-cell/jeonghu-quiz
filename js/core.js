@@ -20,6 +20,7 @@ const save = {
   bosses: 0,         // 쓰러뜨린 보스 수 (중복 포함)
   speedBest: 0,
   story: false,      // 첫 이야기 봤는지
+  recent: [],        // 최근 정답 여부 (난이도 자동 조정용)
 };
 try {
   const old = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
@@ -210,7 +211,7 @@ function addCoins(n, el) {
 
 // ───────── 문제 출처 ─────────
 const CATS = {
-  capital: { name: '나라와 수도', ic: '🏛️', icon: 'icon-capital', desc: '수도·대륙 맞히기', c: '#4fb3ff' },
+  capital: { name: '세계 지리', ic: '🏛️', icon: 'icon-capital', desc: '수도·대륙·도시·방위', c: '#4fb3ff' },
   flag: { name: '국기', ic: '🚩', icon: 'icon-flag', desc: '어느 나라 국기일까?', c: '#ff6b6b' },
   history: { name: '역사', ic: '📜', icon: 'icon-history', desc: '한국사·세계사', c: '#c48a3a' },
   science: { name: '과학 상식', ic: '🔬', icon: 'icon-science', desc: '우주·인체·자연', c: '#3ddc97' },
@@ -246,6 +247,45 @@ function countryQuestions() {
   for (const c of COUNTRIES) {
     if (c.d === 1 || c.noCont) continue; // 너무 쉽거나, 대륙 구분이 애매한 나라는 제외
     out.push({ k: 'cont:' + c.iso, q: `${josa(c.n, '은', '는')} 어느 대륙에 있을까?`, a: c.cont, w: shuffle(conts.filter((x) => x !== c.cont)).slice(0, 3), d: c.d, e: `${flag(c)}${josa(c.n, '은', '는')} ${c.cont}에 있어요.` });
+  }
+  // 이 도시는 어느 나라? (수도와 폭포·산 같은 명소는 제외 — 수도는 위에서 이미 묻고, 명소는 국경에 걸친 곳이 있음)
+  const capSet = new Set(COUNTRIES.map((c) => c.c));
+  const contOf = Object.fromEntries(COUNTRIES.map((c) => [c.n, c.cont]));
+  const SPOT = /폭포|캐니언|울루루|마추픽추|킬리만자로|\(|^예루살렘$/; // 예루살렘: 소속이 국제 분쟁 중
+  const world = CITIES.filter((c) => c.r === 'world' && contOf[c.co] && !SPOT.test(c.n));
+  for (const c of world) {
+    if (capSet.has(c.n) || c.n.startsWith(c.co)) continue;
+    const near = COUNTRIES.filter((x) => x.n !== c.co && x.cont === contOf[c.co]);
+    const w = shuffle(near.length >= 3 ? near : COUNTRIES.filter((x) => x.n !== c.co)).slice(0, 3).map((x) => x.n);
+    out.push({ k: 'cityco:' + c.n, q: `${josa(c.n, '은', '는')} 어느 나라에 있는 도시일까?`, a: c.co, w, d: Math.max(2, c.d), e: `${josa(c.n, '은', '는')} ${c.co}의 도시예요.` });
+  }
+  // 가장 북/남/동/서쪽은? — 좌표로 정답이 확실하게 갈리도록 서로 충분히 떨어진 곳만 고른다
+  const fmt = (c, dp) => `${c.n}(${c.lat >= 0 ? '북위' : '남위'} ${Math.abs(c.lat).toFixed(dp)}°, ${c.lon >= 0 ? '동경' : '서경'} ${Math.abs(c.lon).toFixed(dp)}°)`;
+  const DIRS = [['북', 'lat', 1], ['남', 'lat', -1], ['동', 'lon', 1], ['서', 'lon', -1]];
+  const spread = (pool, key, gap) => {
+    for (let t = 0; t < 40; t++) {
+      const s = shuffle(pool).slice(0, 4);
+      const v = s.map((c) => c[key]).sort((a, b) => a - b);
+      if (s.length === 4 && v.every((x, i) => !i || x - v[i - 1] >= gap)) return s;
+    }
+    return null;
+  };
+  const kr = CITIES.filter((c) => c.r === 'kr');
+  for (let i = 0; i < 80; i++) {
+    const isKr = i % 3 === 0;
+    const [dir, key, sign] = DIRS[i % 4];
+    // 동/서는 태평양을 건너면 헷갈리므로 한 대륙 안에서만 비교
+    const cont = pick(conts);
+    const sameCont = isKr || key === 'lon' || i % 2 === 0;
+    const pool = isKr ? kr : sameCont ? world.filter((c) => contOf[c.co] === cont) : world;
+    const set = spread(pool, key, isKr ? 0.4 : sameCont ? 3 : 6);
+    if (!set) continue;
+    const ans = set.reduce((a, b) => (sign * b[key] > sign * a[key] ? b : a));
+    out.push({
+      k: `dir:${dir}:${set.map((c) => c.n).sort().join(',')}`,
+      q: `다음 중 가장 ${dir}쪽에 있는 ${isKr ? '곳은' : '도시는'}?`, a: ans.n, w: set.filter((c) => c !== ans).map((c) => c.n),
+      d: isKr || sameCont ? 3 : 2, e: `${josa(ans.n, '이', '가')} 가장 ${dir}쪽이에요! ` + set.map((c) => fmt(c, isKr ? 1 : 0)).join(', '),
+    });
   }
   return out;
 }
@@ -284,6 +324,24 @@ function drawQuestions(list, n, diff) {
 function mixedQuestions(n, diff) {
   const all = Object.keys(CATS).flatMap((k) => drawQuestions(questionsFor(k), n, diff));
   return shuffle(all).slice(0, n);
+}
+// 주제 섞기: 절반은 main 주제, 나머지는 다른 주제들에서 골고루
+function themedQuestions(main, n, diff) {
+  if (!CATS[main]) return mixedQuestions(n, diff);
+  const half = Math.ceil(n / 2);
+  const others = shuffle(Object.keys(CATS).filter((k) => k !== main));
+  const each = Math.ceil((n - half) / others.length) + 1;
+  const rest = shuffle(others.flatMap((k) => drawQuestions(questionsFor(k), each, diff))).slice(0, n - half);
+  return shuffle([...drawQuestions(questionsFor(main), half, diff), ...rest]);
+}
+// 최근 실력에 맞춰 난이도 조정: 최근 20문제 정답률 85% 이상이면 한 단계 올리고, 50% 미만이면 한 단계 쉬운 문제도 섞는다
+function adaptDiffs(diffs) {
+  const r = (save.recent || []).slice(-20);
+  if (r.length < 10) return diffs;
+  const acc = r.filter(Boolean).length / r.length;
+  if (acc >= 0.85) return [...new Set(diffs.map((d) => Math.min(3, d + 1)))];
+  if (acc < 0.5) return [...new Set([Math.max(1, Math.min(...diffs) - 1), ...diffs])];
+  return diffs;
 }
 const cityList = (region) => CITIES.filter((c) => !region || c.r === region).map((c) => ({ ...c, k: `city:${c.r}:${c.n}:${c.co}` }));
 
