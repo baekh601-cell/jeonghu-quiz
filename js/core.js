@@ -22,6 +22,8 @@ const save = {
   story: false,      // 첫 이야기 봤는지
   recent: [],        // 최근 정답 여부 (난이도 자동 조정용)
   run: null,         // 하던 스테이지 (이어하기용): { id, kind, state }
+  char: 'jeonghu',   // 고른 캐릭터 (jeonghu | geonhee)
+  duel: { win: 0, lose: 0, draw: 0 }, // 2인 대전 전적
   survivalBest: 0,   // 지도 서바이벌 최고 점수
   shapeBest: 0,      // 나라 모양 맞히기 최고 연속 정답
 };
@@ -62,15 +64,28 @@ function art(name, emoji, cls = '') {
     ? `<img class="art ${cls}" src="${ASSETS[name]}" alt="">`
     : `<span class="art ph ${cls}" aria-hidden="true">${emoji}</span>`;
 }
-const JH = { // 정후 표정
-  wave: (c = '') => art('jeonghu-wave', '🧒', 'who ' + c),
-  think: (c = '') => art('jeonghu-think', '🤔', 'who ' + c),
-  correct: (c = '') => art('jeonghu-correct', '🥳', 'who pop ' + c),
-  wrong: (c = '') => art('jeonghu-wrong', '😅', 'who pop ' + c),
-  king: (c = '') => art('jeonghu-king', '🤴', 'who ' + c),
-  explorer: (c = '') => art('jeonghu-explorer', '🕵️', 'who ' + c),
-  walk: (c = '') => art(ASSETS['jeonghu-walk'] ? 'jeonghu-walk' : 'jeonghu-wave', '🧒', 'who ' + c), // 걷는 그림이 없으면 손 흔드는 그림
-
+// 플레이어 캐릭터. 그림 파일은 `${id}-${pose}` (예: geonhee-wave). 그림이 없으면 em 의 이모지로 대신.
+const CHARS = {
+  jeonghu: { name: '정후', color: '#4fb3ff', shout: '식세븐~!', shoutIc: '🤲', em: { wave: '🧒', think: '🤔', correct: '🥳', wrong: '😅', king: '🤴', explorer: '🕵️', walk: '🧒', plane: '🛩️' } },
+  geonhee: { name: '건희', color: '#3ddc97', shout: '야호~!', shoutIc: '🙌', em: { wave: '👦', think: '🧐', correct: '🤩', wrong: '😵', king: '👑', explorer: '🧭', walk: '👦', plane: '🛫' } },
+};
+const myChar = () => (CHARS[save.char] ? save.char : 'jeonghu');
+const charName = (id = myChar()) => CHARS[id].name;
+// 받침에 따라 조사 붙이기: charJosa('은','는') → "정후는" / "건희는"
+const charJosa = (withJong, noJong, id = myChar()) => josa(charName(id), withJong, noJong);
+function charArt(id, pose, cls = '') {
+  // 걷는 그림이 없으면 손 흔드는 그림으로
+  const name = pose === 'walk' && !ASSETS[`${id}-walk`] ? `${id}-wave` : `${id}-${pose}`;
+  return art(name, CHARS[id].em[pose], 'who ' + (pose === 'correct' || pose === 'wrong' ? 'pop ' : '') + cls);
+}
+const JH = { // 지금 고른 캐릭터의 표정 (이름은 정후(JH)에서 왔지만 건희도 여기로 나온다)
+  wave: (c = '') => charArt(myChar(), 'wave', c),
+  think: (c = '') => charArt(myChar(), 'think', c),
+  correct: (c = '') => charArt(myChar(), 'correct', c),
+  wrong: (c = '') => charArt(myChar(), 'wrong', c),
+  king: (c = '') => charArt(myChar(), 'king', c),
+  explorer: (c = '') => charArt(myChar(), 'explorer', c),
+  walk: (c = '') => charArt(myChar(), 'walk', c),
 };
 if (ASSETS['bg-sky']) { document.body.classList.add('has-bg'); document.body.style.setProperty('--bg-img', `url(${ASSETS['bg-sky']})`); }
 
@@ -203,7 +218,7 @@ function flyTo(render) { // 탈것이 화면을 가로지르며 다음 화면으
   if (reduced) return show(render);
   const p = document.createElement('div');
   p.className = 'flyby';
-  p.innerHTML = save.ride === 'plane' ? art('jeonghu-plane', '🛩️', '') : `<span class="art ph">${rideIcon()}</span>`;
+  p.innerHTML = save.ride === 'plane' ? art(`${myChar()}-plane`, CHARS[myChar()].em.plane, '') : `<span class="art ph">${rideIcon()}</span>`;
   p.firstElementChild.style.cssText = 'width:100%;height:100%';
   document.body.appendChild(p);
   setTimeout(() => show(render), 420);
@@ -260,7 +275,7 @@ function addXp(gain) {
   if (after <= before) return;
   const newRank = rankOf(after) !== rankOf(before);
   // 문제 푸는 중에는 화면을 가리지 않게 알림만, 새 호칭을 얻었을 때만 축하 창
-  if (newRank) setTimeout(() => celebrate(`레벨 업! Lv.${after}`, `새 호칭 획득! 이제 정후는 <b>${rankOf(after)}</b>!`), document.querySelector('.qa') ? 3200 : 600);
+  if (newRank) setTimeout(() => celebrate(`레벨 업! Lv.${after}`, `새 호칭 획득! 이제 ${charJosa('은', '는')} <b>${rankOf(after)}</b>!`), document.querySelector('.qa') ? 3200 : 600);
   else setTimeout(() => { toast(`🎉 레벨 업! Lv.${after}`); sfx('unlock'); }, 400);
 }
 function addCoins(n, el) { // 실제로 받은 코인 수를 돌려준다 (탈것 보너스 포함)

@@ -385,7 +385,7 @@ async function openChest(big) {
 
 async function ending() {
   confetti(200); sfx('clear');
-  await modal(`${JH.king()}<h2>👑 퀴즈왕 등극!</h2><p>정후가 모르쇠 대왕을 물리치고 왕국의 지식 별을 모두 되찾았어요!<br>이제 정후는 <b>퀴즈 왕국의 퀴즈왕</b>!</p><p class="hint">별 3개를 전부 모으는 것에도 도전해 봐! (⭐ ${totalStars()}/${TOTAL_STARS})</p><button class="go press" data-v="ok">만세! 🎉</button>`, { close: false });
+  await modal(`${JH.king()}<h2>👑 퀴즈왕 등극!</h2><p>${charJosa('이', '가')} 모르쇠 대왕을 물리치고 왕국의 지식 별을 모두 되찾았어요!<br>이제 ${charJosa('은', '는')} <b>퀴즈 왕국의 퀴즈왕</b>!</p><p class="hint">별 3개를 전부 모으는 것에도 도전해 봐! (⭐ ${totalStars()}/${TOTAL_STARS})</p><button class="go press" data-v="ok">만세! 🎉</button>`, { close: false });
 }
 
 // ───────── 타이틀 ─────────
@@ -404,11 +404,13 @@ function title() {
       <div class="title-hero">${save.bosses >= WORLDS.length ? JH.king() : JH.wave()}<span class="ride big">${rideIcon()}</span></div>
       ${run ? `<button class="go press big" data-resume>▶ 이어하기<small>${runLabel}</small></button>` : ''}
       <button class="${run ? 'ghost' : 'go big'} press" data-start>${started ? '🗺️ 왕국 지도로' : '모험 시작! ▶'}</button>
+      <button class="ghost press" data-versus>⚔️ 2인 대전 <small>· 지금 캐릭터: ${charName()}</small></button>
       <p class="hint">⭐ ${totalStars()}/${TOTAL_STARS} · 🪙 ${save.coins.toLocaleString()} · Lv.${levelOf(save.xp).lv} ${rankOf(levelOf(save.xp).lv)}</p>
       ${started ? '<button class="linkbtn" data-restart>처음부터 다시하기</button>' : ''}
       ${STORAGE_OK ? '' : '<p class="warnbox">⚠️ 이 브라우저에서는 기록이 저장되지 않아요.<br>Chrome이나 삼성 인터넷에서 열고, 홈 화면에 추가해서 써 주세요.</p>'}
     </div>`;
   $app.querySelector('[data-resume]')?.addEventListener('click', () => { sfx('power'); resumeRun(); });
+  $app.querySelector('[data-versus]').onclick = () => { sfx('tap'); show(versusMenu); };
   $app.querySelector('[data-restart]')?.addEventListener('click', async () => {
     const v = await modal('<h2>처음부터 다시할까?</h2><p>별, 코인, 아이템, 레벨이 전부 사라지고 월드 1부터 다시 시작해요. 되돌릴 수 없어요!</p><button class="go press" data-v="no">아니, 계속할래</button><button class="ghost press" data-v="yes">처음부터 다시하기</button>');
     if (v !== 'yes') return;
@@ -437,7 +439,7 @@ function shop() {
       <div class="shop-grid">${Object.entries(ITEMS).map(([k, it]) => `
         <div class="shop-item card"><span class="big">${it.ic}</span><b>${it.name}</b><small>${it.desc}</small><small>가진 개수 ${save.items[k] || 0}</small>
         <button class="buy press" data-buy="${k}" ${save.coins < it.price ? 'disabled' : ''}>🪙 ${it.price}</button></div>`).join('')}</div>
-      <div class="label">🛩️ 탈것 (지도에서 정후와 함께 다녀요)</div>
+      <div class="label">🛩️ 탈것 (지도에서 함께 다녀요)</div>
       <div class="shop-grid">${Object.entries(RIDES).map(([k, r]) => {
         const own = save.rides.includes(k), on = save.ride === k;
         return `<div class="shop-item card ${on ? 'on' : ''}"><span class="big">${r.ic}</span><b>${r.name}</b><small class="ab">✨ ${r.ab}</small><small>${r.desc}</small>

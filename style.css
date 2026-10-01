@@ -543,3 +543,22 @@ body.wide .qa.has-map .quizmap { flex: none; min-height: 260px; height: calc(100
 @keyframes radarPulse { 50% { fill: #3ddc9766; } }
 .ride-note { background: var(--sun-soft); border: 2px dashed #e0a800; border-radius: 12px; padding: 6px 10px; font-size: 14px; }
 .shop-item small.ab { color: var(--coral); font-size: 14px; }
+
+/* ═════════ 2인 대전 ═════════ */
+.char-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.char-card { display: flex; flex-direction: column; align-items: center; padding: 10px 8px 12px; gap: 4px; position: relative; }
+.char-card .who { width: 110px; height: 110px; font-size: 80px; }
+.char-card b { font-weight: 400; font-size: 22px; }
+.char-card.on { background: var(--sun-soft); box-shadow: var(--lift), 0 0 0 4px var(--c, var(--sun)); }
+.char-card.on::after { content: '✔ 선택'; position: absolute; top: 8px; right: 8px; background: var(--navy); color: var(--sun); border-radius: 99px; padding: 0 8px; font-size: 13px; }
+.code-box { display: flex; justify-content: center; gap: 10px; margin: 16px 0 12px; }
+.code-box i { width: 56px; height: 68px; border: var(--edge); border-radius: 14px; background: var(--paper); display: grid; place-items: center; font-style: normal; font-size: 38px; box-shadow: 0 3px 0 var(--navy); }
+.code-box i.on { background: var(--sun); }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 300px; margin: 0 auto; }
+.keypad button { background: var(--paper); border: var(--edge); border-radius: 14px; box-shadow: 0 3px 0 var(--navy); font-size: 26px; padding: 8px 0; }
+.duel-score { font-size: 64px; line-height: 1; color: var(--coral); -webkit-text-stroke: 2px var(--navy); text-shadow: 4px 4px 0 var(--navy); }
+.duel-score small { font-size: 26px; margin-left: 4px; }
+.opp-row { display: flex; gap: 10px; justify-content: center; align-items: center; width: 100%; max-width: 360px; }
+.opp-row input { flex: 1; min-width: 0; font: inherit; font-size: 24px; text-align: center; padding: 8px; border: var(--edge); border-radius: 14px; background: var(--paper); color: var(--navy); }
+.opp-row .buy { margin: 0; font-size: 20px; padding: 8px 16px; }
+.title-screen .ghost small { color: var(--muted); font-size: 14px; }

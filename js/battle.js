@@ -76,7 +76,7 @@ function vsIntro(boss) {
       stage = 4; timers.forEach(clearTimeout); timers.length = 0;
       o.className = 'vs-screen';
       o.innerHTML = `
-        <div class="vs-side me">${JH.wave()}<b>정후</b></div>
+        <div class="vs-side me">${JH.wave()}<b>${charName()}</b></div>
         <div class="vs-side foe">${art(boss.img, boss.emoji, 'bossimg')}<b>${boss.name}</b></div>
         <div class="vs-text">VS</div>
         <div class="vs-line">“${L.start}”</div>
@@ -122,7 +122,7 @@ function sikseven(anchor) {
   const r = anchor.getBoundingClientRect();
   const b = document.createElement('div');
   b.className = 'sik';
-  b.innerHTML = '식세븐~! <span>🤲</span>';
+  b.innerHTML = `${CHARS[myChar()].shout} <span>${CHARS[myChar()].shoutIc}</span>`;
   b.style.left = `${(r.left + r.width / 2) / Z}px`;
   b.style.top = `${Math.max(40, r.top) / Z}px`;
   document.body.appendChild(b);
@@ -131,7 +131,7 @@ function sikseven(anchor) {
   // 기기에 한국어 음성이 있으면 소리 내어 외치기 (없으면 조용히 넘어감)
   try {
     if (save.sound && 'speechSynthesis' in window && speechSynthesis.getVoices().some((v) => v.lang.startsWith('ko'))) {
-      const u = new SpeechSynthesisUtterance('식세븐!');
+      const u = new SpeechSynthesisUtterance(CHARS[myChar()].shout.replace(/[~!]/g, '') + '!');
       u.lang = 'ko-KR'; u.rate = 1.1; u.pitch = 1.6;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     }

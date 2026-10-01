@@ -303,7 +303,7 @@ function runQuiz(cfg) {
     clearInterval(st.timerId); clearInterval(st.speedId);
     document.body.classList.remove('fever');
     persist();
-    cfg.onEnd({ cleared, correct: correctCount(), wrong: wrongCount(), total: st.results.length, coins: st.coins, gained: st.gained, maxStreak: st.maxStreak, heartsLeft: st.hearts, qs: cfg.qs, results: st.results });
+    cfg.onEnd({ cleared, correct: correctCount(), wrong: wrongCount(), total: st.results.length, coins: st.coins, gained: st.gained, maxStreak: st.maxStreak, heartsLeft: st.hearts, qs: cfg.qs, results: st.results, times: st.times || [] });
   }
   function snapshot() {
     if (!cfg.onSnapshot || cfg.speed) return;
@@ -326,7 +326,7 @@ function runQuiz(cfg) {
 
   function arena() {
     return `<div class="arena card ${st.rage ? 'rage' : ''}" id="arena">
-      <div class="fighter me" id="me"><span id="who">${JH.think()}</span><b>정후</b>
+      <div class="fighter me" id="me"><span id="who">${JH.think()}</span><b>${charName()}</b>
         <div class="gauge" title="필살기 게이지">${gaugeHtml()}</div></div>
       <div class="vs-mark">VS</div>
       <div class="fighter foe" id="boss"><div class="taunt" id="taunt"></div>
@@ -563,6 +563,7 @@ function runQuiz(cfg) {
     st.answered = st.i;
     clearInterval(st.timerId);
     const spent = st.timerLen - st.left;
+    (st.times = st.times || []).push(cfg.timer ? Math.max(0, spent) : null); // 문제마다 걸린 시간(초) — 대전 점수 계산용
     $app.querySelectorAll('.item').forEach((b) => (b.disabled = true));
     document.getElementById('who').innerHTML = ok ? JH.correct() : JH.wrong();
     st.results.push(ok);
@@ -631,7 +632,7 @@ function runQuiz(cfg) {
     const nextLabel = bossDown ? '보스 격파! 🎉' : dead ? '하트가 다 떨어졌어… 💔' : last ? '결과 보기 🏁' : '다음 문제 ›';
     const head = map
       ? (ok ? `${map.pts >= 900 ? '거의 정확해! 🎯' : '정답! 가까워! 👏'} +${map.pts}점` : `${timeout ? '⏰ 시간 초과! ' : ''}조금 멀었어 😅 +${map.pts}점`)
-      : ok ? pick(['정답! 🎉', '맞았어! 👏', '대단해! 🌟', '역시 정후! 😎']) : `${timeout ? '⏰ 시간 초과! ' : ''}정답은 "${esc(q.a)}"`;
+      : ok ? pick(['정답! 🎉', '맞았어! 👏', '대단해! 🌟', `역시 ${charName()}! 😎`]) : `${timeout ? '⏰ 시간 초과! ' : ''}정답은 "${esc(q.a)}"`;
     const body = map ? `실제 위치(빨간 점)와 ${distText(map.km)} 떨어졌어요. (${MAP_OK}점 이상이면 정답)` : q.e ? esc(q.e) : '';
     document.getElementById('fb').innerHTML = `
       <div class="feedback card ${ok ? 'ok' : 'no'}"><b>${head}</b>${body}${q.shape && SHAPES[q.shape] ? locatorSvg(q.shape) : ''}</div>
