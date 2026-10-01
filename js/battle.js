@@ -31,7 +31,11 @@ function shoot(fromEl, toEl, emoji, { big = false, spin = true } = {}) {
       { transform: `translate(${(x0 + x1) / 2}px, ${(y0 + y1) / 2 + arc}px) translate(-50%, -50%) scale(${big ? 1.8 : 1.2}) rotate(${spin ? 360 : 0}deg)` },
       { transform: `translate(${x1}px, ${y1}px) translate(-50%, -50%) scale(${big ? 2.2 : 1}) rotate(${spin ? 720 : 0}deg)` },
     ], { duration: big ? 650 : 450, easing: 'ease-in' });
-    anim.onfinish = () => { p.remove(); resolve(); };
+    // 화면이 가려져 있으면(다른 앱으로 전환 등) 애니메이션이 끝나지 않으므로, 시간이 지나면 그냥 넘어간다
+    let finished = false;
+    const done = () => { if (finished) return; finished = true; p.remove(); resolve(); };
+    anim.onfinish = done;
+    setTimeout(done, (big ? 650 : 450) + 250);
   });
 }
 function burst(el, text, cls = '') { // 맞은 자리에 터지는 글자
