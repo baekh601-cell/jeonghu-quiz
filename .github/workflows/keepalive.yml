@@ -1,0 +1,16 @@
+# 실시간 대전 서버(Supabase 무료 플랜)는 일주일쯤 아무도 쓰지 않으면 자동으로 잠든다.
+# 하루 한 번 가볍게 불러서 깨어 있게 한다. (그래도 잠들었다면 Supabase 대시보드에서 Restore 를 누르면 된다.)
+name: Keep versus server awake
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://gbebckssijkrzzwshxrl.supabase.co/auth/v1/health" -H "apikey: sb_publishable_nJQUsKlSEGg7m8v1zus6kg_mQaSPDjZ")
+          echo "status $code"
