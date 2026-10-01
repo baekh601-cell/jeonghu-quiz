@@ -21,8 +21,8 @@ fonts.forEach((f) => copyFileSync(new URL(`files/${f}`, fontDir), p(`assets/font
 
 // 2) 이미지: 이름 규칙별 목표 가로 크기 (화면 표시 크기의 약 2배, 레티나 대응)
 const WIDTH = (name) =>
-  name === 'bg-sky' ? 1080 : name === 'bg-passport' ? 1200 : name === 'jeonghu-plane' ? 520
-  : name.startsWith('jeonghu-') ? 480 : name.startsWith('icon-') ? 200 : 600;
+  name === 'bg-sky' ? 1080 : name === 'bg-passport' ? 1200 : /-plane$/.test(name) ? 520
+  : /^(jeonghu|geonhee)-/.test(name) ? 480 : name.startsWith('icon-') ? 200 : 600;
 const images = {};
 const rawDir = p('assets/raw/');
 const raws = existsSync(rawDir) ? readdirSync(rawDir).filter((f) => /\.(png|jpe?g|webp)$/i.test(f)) : [];

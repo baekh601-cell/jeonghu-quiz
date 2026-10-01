@@ -174,10 +174,82 @@ A kind old owl shopkeeper with small round glasses, a striped apron and a tiny m
 | 파일 이름 | 크기 | 프롬프트 (공통 스타일 뒤에 붙이기) |
 |---|---|---|
 | `icon-speed.png` | 1024×1024 | `Round sticker icon: a yellow stopwatch with a lightning bolt, motion lines. Centered, transparent background.` |
+## 5. 두 번째 캐릭터 "건희" (2인용 대전용, 투명 배경 PNG)
+
+정후와 **같은 그림체**인데 한눈에 구별되는 친구 캐릭터예요. 정후는 하늘색 점퍼 + 고글, 건희는 **민트색 후드 + 주황 탐험 모자**로 색을 나눴어요.
+
+### 만드는 순서
+1. 같은 GPT 대화에서 **`jeonghu-base.png` 를 첨부**하고 "같은 그림체로 다른 아이를 그려 줘"라고 시작하면 그림체가 맞아요.
+2. `geonhee-base.png` 를 먼저 만들어 마음에 들 때까지 다듬고, 나머지 8개는 **`geonhee-base.png` 를 첨부한 채로** 만들어 주세요.
+3. 모든 프롬프트 앞에 맨 위의 **공통 스타일** + 아래 **건희 캐릭터 설정**을 붙여 주세요.
+
+### 건희 캐릭터 설정 (✏️ 대괄호 부분은 실제 건희에 맞게 바꿔 주세요)
+```
+Character "Geonhee": a cheerful [8-year-old Korean boy / girl], chibi proportions (head about 1/3 of body), [short tousled dark-brown hair / hair style of your choice], big sparkling dark-brown eyes, rosy cheeks, confident grin. An orange explorer bucket hat with a small white star badge. Mint-green zip hoodie over a white t-shirt, navy shorts, yellow sneakers, small orange cross-body bag. Same art style, line weight and proportions as the attached reference character, but clearly a different child.
+```
+
+| 파일 이름 | GPT 생성 크기 | 쓰이는 곳 |
+|---|---|---|
+| `geonhee-base.png` | 1024×1536 (세로) | 캐릭터 기준 |
+| `geonhee-wave.png` | 1024×1024 | 타이틀·캐릭터 선택·VS 화면 |
+| `geonhee-think.png` | 1024×1024 | 문제 풀 때 |
+| `geonhee-correct.png` | 1024×1024 | 정답 |
+| `geonhee-wrong.png` | 1024×1024 | 오답 |
+| `geonhee-king.png` | 1024×1024 | 승리·보스 격파 |
+| `geonhee-explorer.png` | 1024×1024 | 지도 게임 |
+| `geonhee-walk.png` | 1024×1024 | 월드맵에서 걷기 |
+| `geonhee-plane.png` | 1536×1024 (가로) | 화면 전환 때 날아가는 탈것 |
+
+**geonhee-base.png**
+```
+[공통 스타일] [건희 캐릭터 설정]
+Full-body front view character reference, standing straight, relaxed happy expression, arms slightly away from body. Centered with generous padding. Transparent background.
+```
+**geonhee-wave.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Full body, waving hello with one hand raised high, big open-mouth smile, one foot slightly lifted, energetic. Centered, transparent background.
+```
+**geonhee-think.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Upper body (waist up), thinking pose: arms crossed with one hand tapping the cheek, eyes looking up, small question-mark-shaped sparkle near head (a symbol, not a letter). Centered, transparent background.
+```
+**geonhee-correct.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Full body, jumping in the air with one fist punching up in celebration, eyes closed happily, huge grin, small yellow stars and sparkles around. Centered, transparent background.
+```
+**geonhee-wrong.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Full body, cute "oops" reaction: both hands on cheeks, surprised sheepish smile, one small sweat drop, NOT sad or crying — still positive. Centered, transparent background.
+```
+**geonhee-king.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Full body, "Quiz King": wearing a shiny golden crown (over or instead of the hat) and a small blue royal cape over the hoodie, proudly holding a golden trophy up with both hands, confetti around. Centered, transparent background.
+```
+**geonhee-explorer.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Full body, explorer pose: looking through binoculars with one hand, holding a compass in the other, curious excited face. Centered, transparent background.
+```
+**geonhee-walk.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Full body, walking cheerfully toward the viewer at a slight angle, one leg forward, arms swinging, cross-body bag visible. Must read clearly at very small size (64px): bold silhouette, simple shapes. Centered, transparent background.
+```
+**geonhee-plane.png**
+```
+[공통 스타일] [건희 캐릭터 설정] Same character as the attached reference image.
+Side view (facing right) of a small round cartoon propeller airplane, mint green with orange wings and a white stripe. Geonhee sits in the open cockpit, waving, hat strap fluttering behind. A few speed lines behind the plane. Plane fills most of the frame. Transparent background.
+```
 ## 체크리스트
 - [ ] 캐릭터 8개 (`jeonghu-*.png`)
 - [ ] 아이콘 10개 (`icon-*.png`)
 - [ ] 배경 2개 + 앱 아이콘 1개
 - [ ] 왕국 모드: 걷는 정후, 상점 주인, 보스 8종, 스피드 아이콘 (11개)
+- [ ] 건희 캐릭터 9개 (`geonhee-*.png`)
 - 총 **32개**. 우선순위: `jeonghu-base` → 표정 5종 → `jeonghu-walk` → 보스 8종 → 나머지. 한꺼번에 올리지 않아도 돼요. 올라온 파일부터 앱에 반영하고, 아직 없는 이미지는 임시 그림으로 표시할게요.
 - 로고 글자("정후의 세계일주 퀴즈왕")는 GPT가 한글을 자주 틀리게 쓰기 때문에 이미지로 만들지 않고 앱에서 글꼴로 만들어요.

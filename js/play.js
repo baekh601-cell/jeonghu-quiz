@@ -19,9 +19,11 @@ const ITEMS = {
 // ───────── 지도 ─────────
 const REGIONS = {
   world: { name: '세계', ic: '🌍', box: [-170, -58, 190, 140], kx: 1, scale: 1500 },
-  kr: { name: '대한민국', ic: '🇰🇷', box: [124.4, -38.9, 7.6, 5.9], kx: Math.cos((36 * Math.PI) / 180), scale: 40 },
+  // scale: 점수 = 1000 × e^(−거리/scale). 한국은 100km (20km→819점, 50km→607점, 92km→400점, 150km→223점).
+  // 40km 였을 때는 폰에서 손가락 오차(15~20km)만으로 600점대가 되어 너무 짰다.
+  kr: { name: '대한민국', ic: '🇰🇷', box: [124.4, -38.9, 7.6, 5.9], kx: Math.cos((36 * Math.PI) / 180), scale: 100 },
 };
-const MAP_OK = 400; // 퀴즈 속 지도 문제는 400점(세계 약 1,400km / 한국 약 37km 이내) 이상이면 정답
+const MAP_OK = 400; // 퀴즈 속 지도 문제는 400점(세계 약 1,400km / 한국 약 92km 이내) 이상이면 정답
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371, rad = Math.PI / 180;
   const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
