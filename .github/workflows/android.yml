@@ -1,22 +1,28 @@
-# main 에 push 되면 안드로이드 앱(APK)을 만들어 GitHub 릴리스 'app-latest' 에 올린다.
-# 받는 주소(항상 최신): https://github.com/baekh601-cell/jeonghu-quiz/releases/download/app-latest/jeonghu-quiz.apk
+# push 되면 안드로이드 앱(APK)을 만들어 GitHub 릴리스에 올린다.
+#   main            → "정후의 퀴즈 왕국"  릴리스 app-latest   / jeonghu-quiz.apk
+#   versus-online   → "퀴즈 왕국 B" (실시간 대전 시험판, 별도 앱이라 나란히 설치됨)  릴리스 app-b-latest / jeonghu-quiz-b.apk
+# 받는 주소(항상 최신):
+#   https://github.com/baekh601-cell/jeonghu-quiz/releases/download/app-latest/jeonghu-quiz.apk
+#   https://github.com/baekh601-cell/jeonghu-quiz/releases/download/app-b-latest/jeonghu-quiz-b.apk
 name: Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, versus-online]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: android
+  group: android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   apk:
     runs-on: ubuntu-latest
+    env:
+      IS_B: ${{ github.ref_name == 'versus-online' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,6 +34,20 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      - name: 어떤 앱을 만들지 정하기
+        run: |
+          if [ "$IS_B" = "true" ]; then
+            echo "APK=jeonghu-quiz-b.apk" >> "$GITHUB_ENV"
+            echo "TAG=app-b-latest" >> "$GITHUB_ENV"
+            echo "TITLE=퀴즈 왕국 B - 실시간 대전 시험판" >> "$GITHUB_ENV"
+            # 별도 앱으로 설치되도록 앱 ID 와 이름을 바꾼다
+            node -e "const f='capacitor.config.json';const c=JSON.parse(require('fs').readFileSync(f));c.appId+='.b';c.appName='퀴즈 왕국 B';require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
+          else
+            echo "APK=jeonghu-quiz.apk" >> "$GITHUB_ENV"
+            echo "TAG=app-latest" >> "$GITHUB_ENV"
+            echo "TITLE=정후의 퀴즈 왕국 앱" >> "$GITHUB_ENV"
+          fi
+          cat capacitor.config.json
       - name: 웹 파일·아이콘 준비
         run: |
           npm run build:assets
@@ -40,7 +60,7 @@ jobs:
           npx cap sync android
           # 앱 버전 = 빌드 번호 (업데이트할 때마다 올라감)
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
-          grep -E "versionCode|versionName" android/app/build.gradle
+          grep -E "versionCode|versionName|applicationId" android/app/build.gradle
       - name: APK 빌드
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
@@ -53,20 +73,21 @@ jobs:
           printf '%s' "$KS_B64" | tr -d '\r\n ' | base64 -d > release.p12
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           "$BT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
-          "$BT/apksigner" sign --ks release.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --key-pass env:KS_PASS --ks-key-alias "$KS_ALIAS" --out jeonghu-quiz.apk aligned.apk
-          "$BT/apksigner" verify --print-certs jeonghu-quiz.apk | head -3
+          "$BT/apksigner" sign --ks release.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --key-pass env:KS_PASS --ks-key-alias "$KS_ALIAS" --out "$APK" aligned.apk
+          "$BT/apksigner" verify --print-certs "$APK" | head -3
           rm release.p12
-          ls -lh jeonghu-quiz.apk
+          ls -lh "$APK"
       - uses: actions/upload-artifact@v4
         with:
-          name: jeonghu-quiz-apk
-          path: jeonghu-quiz.apk
-      - name: 릴리스 'app-latest' 에 올리기
+          name: ${{ env.APK }}
+          path: ${{ env.APK }}
+      - name: 릴리스에 올리기
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete app-latest --yes --cleanup-tag || true
-          gh release create app-latest jeonghu-quiz.apk \
-            --title "정후의 퀴즈 왕국 앱 (빌드 ${{ github.run_number }})" \
-            --notes "휴대폰에서 jeonghu-quiz.apk 를 눌러 받은 뒤 설치하세요. 커밋: ${{ github.sha }}" \
-            --target ${{ github.sha }} --latest
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          LATEST=$([ "$IS_B" = "true" ] && echo "--latest=false" || echo "--latest")
+          gh release create "$TAG" "$APK" \
+            --title "$TITLE (빌드 ${{ github.run_number }})" \
+            --notes "휴대폰에서 $APK 를 눌러 받은 뒤 설치하세요. 커밋: ${{ github.sha }}" \
+            --target ${{ github.sha }} $LATEST
