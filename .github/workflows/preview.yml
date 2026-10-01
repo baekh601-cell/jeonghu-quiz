@@ -1,0 +1,18 @@
+# versus-online 브랜치에 push 하면 main 의 배포(Deploy)를 다시 돌려서 /b/ 시험용 주소를 갱신한다.
+# (GitHub Pages 는 기본 브랜치에서만 배포할 수 있어서, 브랜치에서는 "main 배포를 실행해 줘"라고 요청만 한다.)
+name: Preview B
+
+on:
+  push:
+    branches: [versus-online]
+
+permissions:
+  actions: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh workflow run deploy.yml --ref main -R ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ github.token }}

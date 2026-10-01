@@ -30,6 +30,23 @@ jobs:
       - run: npm ci
       - run: npm run build:assets
       - run: npm run build:www # 배포할 파일만 www/ 로 모으기 (안드로이드 앱도 같은 결과물)
+      # 시험용 B 버전: versus-online 브랜치를 /b/ 주소에 함께 올린다 (브랜치가 없으면 건너뜀)
+      - name: B 버전(versus-online) 받기
+        id: b
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: versus-online
+          path: _b
+      - name: B 버전을 /b/ 에 빌드
+        if: steps.b.outcome == 'success'
+        run: |
+          ln -s ../node_modules _b/node_modules
+          cd _b
+          npm run build:assets
+          npm run build:www
+          cd ..
+          cp -r _b/www www/b
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
