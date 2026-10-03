@@ -108,6 +108,7 @@ function kingdom(opts = {}) {
     <nav class="dock">
       <button class="press" data-go="shop"><span>🏪</span>상점</button>
       <button class="press" data-go="free"><span>🎒</span>자유 여행</button>
+      <button class="press" data-go="badges"><span>🏅</span>배지</button>
       <button class="press" data-go="stats"><span>🏆</span>기록</button>
     </nav>`;
   $app.innerHTML = `
@@ -150,6 +151,7 @@ function kingdom(opts = {}) {
   ui.querySelector('[data-go=shop]').onclick = () => { sfx('tap'); goto(shop); };
   ui.querySelector('[data-go=free]').onclick = () => { sfx('tap'); goto(freeMenu); };
   ui.querySelector('[data-go=stats]').onclick = () => { sfx('tap'); goto(stats); };
+  ui.querySelector('[data-go=badges]').onclick = () => { sfx('tap'); goto(badgeRoom); };
 }
 function goto(render) { $app.classList.remove('on-map'); show(render); }
 function toMap(opts) { $app.classList.remove('on-map'); show(() => kingdom(opts)); }
@@ -310,6 +312,7 @@ async function stageResult(w, k, r) {
   if (r.cleared) bonus = info.kind === 'bonus' ? 0 : 5 + r.stars * 2 + (firstClear ? 10 : 0) + (rideIs('plane') ? 3 : 0); // 🛩️ 알뜰 비행
   if (info.kind === 'bonus') { save.speedBest = Math.max(save.speedBest, r.correct); }
   if (info.kind === 'boss' && r.cleared) save.bosses++;
+  if (info.kind === 'boss' && r.cleared && !r.map && r.heartsLeft === 3) save.ach.nohit++; // 🏅 노히트
   bonus = addCoins(bonus); // 🏴‍☠️ 해적선이면 1.5배로 들어옴
   persist();
   // 일반 스테이지를 깼으면 지도로 안 돌아가고 바로 다음 스테이지로 갈 수 있다 (보스 성 직전까지)
@@ -341,6 +344,7 @@ async function stageResult(w, k, r) {
     setTimeout(() => confetti(r.stars === 3 ? 140 : 70), 350);
     if (info.kind !== 'bonus') setTimeout(() => sikseven($app.querySelector('.result-screen > .who')), 900);
   } else sfx('fail');
+  setTimeout(checkBadges, 1200); // 결과 화면이 뜬 뒤에 배지 알림
 
   const again = () => flyTo(() => playStage(w, k));
   $app.querySelector('[data-a=quick]')?.addEventListener('click', () => { sfx('tap'); flyTo(() => playStage(quickNext.w, quickNext.k)); });
@@ -404,13 +408,19 @@ function title() {
       <div class="title-hero">${save.bosses >= WORLDS.length ? JH.king() : JH.wave()}<span class="ride big">${rideIcon()}</span></div>
       ${run ? `<button class="go press big" data-resume>▶ 이어하기<small>${runLabel}</small></button>` : ''}
       <button class="${run ? 'ghost' : 'go big'} press" data-start>${started ? '🗺️ 왕국 지도로' : '모험 시작! ▶'}</button>
-      <button class="ghost press" data-versus>⚔️ 2인 대전 <small>· 지금 캐릭터: ${charName()}</small></button>
+      <div class="title-row">
+        <button class="ghost press" data-badges>🏅 배지<small>${Object.keys(save.badges).length} / ${BADGES.length}</small></button>
+        <button class="ghost press" data-versus>⚔️ 2인 대전<small>지금: ${charName()}</small></button>
+      </div>
       <p class="hint">⭐ ${totalStars()}/${TOTAL_STARS} · 🪙 ${save.coins.toLocaleString()} · Lv.${levelOf(save.xp).lv} ${rankOf(levelOf(save.xp).lv)}</p>
       ${started ? '<button class="linkbtn" data-restart>처음부터 다시하기</button>' : ''}
+      ${AppP ? '<button class="linkbtn" data-update>🔄 앱 업데이트 확인</button>' : ''}
       ${STORAGE_OK ? '' : '<p class="warnbox">⚠️ 이 브라우저에서는 기록이 저장되지 않아요.<br>Chrome이나 삼성 인터넷에서 열고, 홈 화면에 추가해서 써 주세요.</p>'}
     </div>`;
   $app.querySelector('[data-resume]')?.addEventListener('click', () => { sfx('power'); resumeRun(); });
   $app.querySelector('[data-versus]').onclick = () => { sfx('tap'); show(versusMenu); };
+  $app.querySelector('[data-badges]').onclick = () => { sfx('tap'); show(badgeRoom); };
+  $app.querySelector('[data-update]')?.addEventListener('click', () => { sfx('tap'); toast('🔄 확인하는 중…'); checkAppUpdate(true); });
   $app.querySelector('[data-restart]')?.addEventListener('click', async () => {
     const v = await modal('<h2>처음부터 다시할까?</h2><p>별, 코인, 아이템, 레벨이 전부 사라지고 월드 1부터 다시 시작해요. 되돌릴 수 없어요!</p><button class="go press" data-v="no">아니, 계속할래</button><button class="ghost press" data-v="yes">처음부터 다시하기</button>');
     if (v !== 'yes') return;
@@ -457,7 +467,7 @@ function shop() {
       const k = b.dataset.rbuy, r = RIDES[k];
       if (save.coins < r.price) return;
       save.coins -= r.price; save.rides.push(k); save.ride = k; persist(); sfx('power'); confetti(60);
-      toast(`${r.ic} ${r.name} 획득!`); draw();
+      toast(`${r.ic} ${r.name} 획득!`); draw(); checkBadges();
     }));
     $app.querySelectorAll('[data-ride]').forEach((b) => (b.onclick = () => { save.ride = b.dataset.ride; persist(); sfx('tap'); draw(); }));
   };
@@ -516,7 +526,7 @@ function freeMenu() {
       if (!save.wrong.length) return toast('아직 틀린 문제가 없어요! 👍');
       return flyTo(() => runQuiz({
         title: '📒 오답 노트', qs: shuffle(save.wrong).slice(0, 10), hearts: null,
-        onWrongFixed: (q) => { save.wrong = save.wrong.filter((w) => w.k !== q.k); },
+        onWrongFixed: (q) => { save.wrong = save.wrong.filter((w) => w.k !== q.k); save.ach.fixed++; },
         onQuit: () => show(freeMenu), onEnd: (r) => freeResult({ ...r, again: () => (save.wrong.length ? b.click() : show(freeMenu)) }),
       }));
     }
@@ -559,6 +569,7 @@ function freeResult(r) {
       ${r.qs ? wrongReview(r) : ''}
     </div>`;
   if (pct >= 0.8) { sfx('clear'); confetti(); }
+  setTimeout(checkBadges, 800);
   $app.querySelector('[data-a=again]').onclick = () => { sfx('tap'); flyTo(r.again); };
   $app.querySelector('[data-a=menu]').onclick = () => { sfx('tap'); show(freeMenu); };
 }

@@ -212,6 +212,7 @@ function show(render) { // 화면 전환: 새 화면이 톡 튀어 오른다
   document.getElementById('ui').innerHTML = ''; // 월드맵 전용 HUD 지우기
   render();
   $app.classList.remove('screen-in'); void $app.offsetWidth; $app.classList.add('screen-in');
+  if (typeof checkBadges === 'function') checkBadges(); // 대전 결과처럼 다른 곳에서 채운 배지도 여기서
   window.scrollTo(0, 0);
 }
 function flyTo(render) { // 탈것이 화면을 가로지르며 다음 화면으로

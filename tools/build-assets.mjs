@@ -39,7 +39,7 @@ for (const f of raws) {
 }
 
 // 3) 목록 + 빌드 버전 (내용이 바뀌면 버전이 바뀌어 설치된 앱이 새로 받는다)
-const core = ['index.html', 'style.css', 'js/core.js', 'js/battle.js', 'js/play.js', 'js/world.js', 'js/versus.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
+const core = ['index.html', 'style.css', 'js/core.js', 'js/battle.js', 'js/play.js', 'js/world.js', 'js/versus.js', 'js/badges.js', 'js/update.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
   'data/countries.js', 'data/cities.js', 'data/history.js', 'data/science.js', 'data/nonsense.js', 'data/kbo.js', 'data/history2.js', 'data/science2.js', 'data/nonsense2.js', 'data/kbo2.js', 'data/map.js',
   'assets/fonts/jua.css'];
 const precache = [...core, ...fonts.map((f) => `assets/fonts/${f}`), ...Object.values(images)];
