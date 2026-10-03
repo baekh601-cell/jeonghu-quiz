@@ -34,6 +34,9 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      - name: B 앱도 main 의 최신 그림 쓰기
+        if: env.IS_B == 'true'
+        run: git fetch --depth=1 origin main && git checkout FETCH_HEAD -- assets/raw || true
       - name: 어떤 앱을 만들지 정하기
         run: |
           if [ "$IS_B" = "true" ]; then

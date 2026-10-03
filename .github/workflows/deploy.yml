@@ -42,6 +42,7 @@ jobs:
         if: steps.b.outcome == 'success'
         run: |
           ln -s ../node_modules _b/node_modules
+          cp -rn assets/raw/. _b/assets/raw/ # main 에 새로 올린 그림도 B 에 (B 에 같은 이름이 있으면 그대로 둠)
           cd _b
           npm run build:assets
           npm run build:www

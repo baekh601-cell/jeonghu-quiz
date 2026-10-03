@@ -1,0 +1,39 @@
+아래 작업을 처음부터 끝까지 한 번에 진행해 줘. 중간에 나에게 확인을 묻지 말고, 마지막에 결과만 알려 줘.
+
+## 목표
+내 GitHub 저장소 baekh601-cell/jeonghu-quiz (브랜치 main) 에 아이들용 퀴즈 게임의 새 메뉴 아이콘 4개를 그려서 직접 올려 줘.
+저장소에 올리면 GitHub Actions 가 자동으로 크기를 줄이고 웹과 안드로이드 앱에 반영해. 나는 따로 할 일이 없어.
+
+## 1단계: 기존 그림체 확인
+가능하면 저장소의 assets/raw/icon-capital.png, assets/raw/icon-science.png, assets/raw/icon-map.png 를 열어 보고 같은 그림체로 맞춰 줘.
+(열 수 없으면 아래 공통 스타일만 따르면 돼.)
+
+## 2단계: 이미지 4장 생성 (한 장에 하나씩, 각각 1024×1024, 투명 배경 PNG)
+모든 이미지에 이 공통 스타일을 적용해:
+"Cute 2D vector sticker illustration for a kids' mobile quiz game. Thick rounded dark-navy outline (#1F2A5A), soft cel shading, clean flat colors. Palette: sky blue #4FB3FF, sunshine yellow #FFD43B, coral #FF6B6B, mint #3DDC97, cream #FFF8EC. One big object filling about 80% of the canvas, centered, readable even at 72px. Transparent background. NO text, NO letters, NO numbers, NO watermark, NO logos or trademarked characters."
+
+1) 파일 이름 icon-minecraft.png
+   "A chunky blocky cube in a voxel/pixel style: green grassy top, brown dirt sides with little square pixel patterns, and a small cyan pickaxe made of square pixels leaning against it. Generic block-building game feel, no logos, no copyrighted mobs."
+2) 파일 이름 icon-bell.png
+   "A shiny golden school bell with a coral ribbon bow on top, ringing with small motion arcs and sparkling stars around it."
+3) 파일 이름 icon-memo.png
+   "Two playing cards tilted in a V shape: the left card shows its sky-blue back with a simple yellow star pattern, the right card is flipped open showing a simple striped flag (abstract colors, not a real country), with a small sparkle where they touch."
+4) 파일 이름 icon-puzzle.png
+   "Four jigsaw puzzle pieces fitting together into a round cartoon globe (blue oceans, green land), with one piece lifted slightly out of place and a tiny sparkle."
+
+## 3단계: 저장소에 직접 업로드
+- 저장소: baekh601-cell/jeonghu-quiz, 브랜치: main
+- 경로: assets/raw/icon-minecraft.png, assets/raw/icon-bell.png, assets/raw/icon-memo.png, assets/raw/icon-puzzle.png
+- 파일 이름은 위와 정확히 같게(소문자, 하이픈). 같은 이름이 이미 있으면 덮어써.
+- 커밋 메시지: "Add icons for Minecraft, Golden Bell, flag memory and map puzzle"
+- 다른 파일은 절대 수정하거나 지우지 마.
+
+### 만약 이미지를 4장 따로 만들 수 없거나 파일을 하나만 올릴 수 있다면 (예비 방법)
+대신 2048×2048 이하의 정사각형 이미지 한 장에 2×2 격자로 4개를 그려서 assets/raw/sheet-fun/icons.png 에 올려 줘.
+순서: 왼쪽 위 = 마인크래프트 블록, 오른쪽 위 = 골든벨, 왼쪽 아래 = 카드 짝맞추기, 오른쪽 아래 = 퍼즐 지구본.
+각 그림은 자기 칸의 가운데에 두고, 칸 사이에 넉넉한 투명 여백을 둬서 서로 절대 겹치지 않게 해. (빌드가 자동으로 4칸을 잘라서 써.)
+
+## 4단계: 결과 알려 주기 (한국어로 짧게)
+- 올린 파일 경로와 커밋 링크
+- 4개 아이콘 미리보기
+- 올리지 못한 것이 있으면 이유

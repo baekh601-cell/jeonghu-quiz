@@ -1,5 +1,5 @@
 // 자동 생성 (tools/build-assets.mjs). 직접 고치지 마세요.
-self.BUILD = '2639789b3b';
+self.BUILD = 'ffb13054e7';
 self.ASSETS = {
  "bg-passport": "assets/img/bg-passport.webp",
  "bg-sky": "assets/img/bg-sky.webp",
