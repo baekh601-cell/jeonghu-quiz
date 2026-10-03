@@ -260,7 +260,7 @@ function onlineSession(code, role, botLevel) {
     };
     if (isMap) {
       const okBtn = document.getElementById('mapok');
-      const picker = mapPicker($app.querySelector('.quizmap'), q.map, () => { okBtn.disabled = false; okBtn.textContent = '여기야! 확인 📍'; }, { radar: false });
+      const picker = mapPicker($app.querySelector('.quizmap'), q.map, () => { okBtn.disabled = false; okBtn.textContent = '여기야! 확인 📍'; }, { beam: false }); // 대전은 공평하게: 탈것 능력 없이
       B.cur = { q, picker };
       okBtn.onclick = () => { if (answered()) return; okBtn.disabled = true; const { pts, km } = picker.reveal(); B.cur.map = { pts, km }; submit(pts >= MAP_OK); okBtn.remove(); };
     } else {
