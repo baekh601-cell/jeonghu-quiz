@@ -90,7 +90,9 @@ jobs:
         run: |
           gh release delete "$TAG" --yes --cleanup-tag || true
           LATEST=$([ "$IS_B" = "true" ] && echo "--latest=false" || echo "--latest")
-          gh release create "$TAG" "$APK" \
+          # 앱이 새 버전을 확인할 때 읽는 파일 (GitHub API 는 통신사 망에서 횟수 제한에 자주 걸려서 이 파일을 쓴다)
+          echo "{\"build\": ${{ github.run_number }}, \"apk\": \"$APK\"}" > version.json
+          gh release create "$TAG" "$APK" version.json \
             --title "$TITLE (빌드 ${{ github.run_number }})" \
             --notes "휴대폰에서 $APK 를 눌러 받은 뒤 설치하세요. 커밋: ${{ github.sha }}" \
             --target ${{ github.sha }} $LATEST
