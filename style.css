@@ -573,6 +573,10 @@ body.wide .qa.has-map .quizmap { flex: none; min-height: 260px; height: calc(100
 .title-row .ghost { display: flex; flex-direction: column; align-items: center; padding: 8px 6px; line-height: 1.2; }
 .title-row .ghost small { font-size: 13px; }
 .upd-ic { font-size: 60px; line-height: 1.1; animation: bob 1.6s ease-in-out infinite; }
+.updline { font-size: 14px; color: var(--muted); width: 100%; max-width: 360px; }
+.updline .linkbtn { font-size: 14px; }
+.updline.new .go { margin-top: 4px; animation: evPulse 1.4s ease-in-out infinite; }
+.updline.new .go small { display: block; font-size: 14px; text-shadow: none; }
 
 /* ═════════ 🌟 깜짝 이벤트 (js/play.js EVENTS) ═════════ */
 .ev-tag { display: inline-block; margin: -4px 0 8px; padding: 3px 12px; border: 2px solid var(--navy); border-radius: 99px; font-size: 15px; background: var(--sun); animation: evPulse 1s ease-in-out infinite; }

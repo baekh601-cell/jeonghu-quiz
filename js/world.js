@@ -436,13 +436,13 @@ function title() {
       </div>
       <p class="hint">⭐ ${totalStars()}/${TOTAL_STARS} · 🪙 ${save.coins.toLocaleString()} · Lv.${levelOf(save.xp).lv} ${rankOf(levelOf(save.xp).lv)}</p>
       ${started ? '<button class="linkbtn" data-restart>처음부터 다시하기</button>' : ''}
-      ${AppP ? '<button class="linkbtn" data-update>🔄 앱 업데이트 확인</button>' : ''}
+      ${AppP ? '<div class="updline" id="updline"></div>' : ''}
       ${STORAGE_OK ? '' : '<p class="warnbox">⚠️ 이 브라우저에서는 기록이 저장되지 않아요.<br>Chrome이나 삼성 인터넷에서 열고, 홈 화면에 추가해서 써 주세요.</p>'}
     </div>`;
   $app.querySelector('[data-resume]')?.addEventListener('click', () => { sfx('power'); resumeRun(); });
   $app.querySelector('[data-versus]').onclick = () => { sfx('tap'); show(versusMenu); };
   $app.querySelector('[data-badges]').onclick = () => { sfx('tap'); show(badgeRoom); };
-  $app.querySelector('[data-update]')?.addEventListener('click', () => { sfx('tap'); toast('🔄 확인하는 중…'); checkAppUpdate(true); });
+  if (typeof paintUpd === 'function') paintUpd(); // 앱 버전 줄 (js/update.js)
   $app.querySelector('[data-restart]')?.addEventListener('click', async () => {
     const v = await modal('<h2>처음부터 다시할까?</h2><p>별, 코인, 아이템, 레벨이 전부 사라지고 월드 1부터 다시 시작해요. 되돌릴 수 없어요!</p><button class="go press" data-v="no">아니, 계속할래</button><button class="ghost press" data-v="yes">처음부터 다시하기</button>');
     if (v !== 'yes') return;
