@@ -20,6 +20,10 @@ const BATCHES = {
     { file: 'kbo2', cat: 'kbo', reviews: ['kbo2'] },
     { file: 'nonsense2', cat: 'nonsense', reviews: ['nonsense2'] },
   ],
+  minecraft: [
+    { file: 'minecraft', cat: 'minecraft', reviews: ['minecraft'] },
+    { file: 'minecraft2', cat: 'minecraft', reviews: ['minecraft2'] },
+  ],
 };
 const batch = BATCHES[process.argv[2]];
 if (!batch) { console.error(`사용: node tools/apply-review.mjs <${Object.keys(BATCHES).join('|')}>`); process.exit(1); }

@@ -297,10 +297,28 @@ const distText = (km) => (!isFinite(km) ? '위치를 못 찍었어요' : km < 1 
  *   speed: 초 | null,              스피드 게임 (전체 제한 시간, 문제 무한)
  *   items: true,                   아이템 사용 가능
  *   resume: 이어하기 상태, onSnapshot(state): 문제마다 진행 상황 저장
+ *   events: true,                  깜짝 이벤트 (황금 문제·보물 상자·보스 난입)
+ *   bell: { start, total },        골든벨: 진행 표시를 "🔔 n / 50" 으로
  *   onEnd(result), onQuit()
  * }
  */
+// 🌟 깜짝 이벤트: 문제를 고를 때 미리 정해 둔다 (q.ev). 그래야 이어하기를 해도 같은 문제에 같은 이벤트.
+const EVENTS = {
+  gold: { ic: '🌟', tag: '황금 문제! 맞히면 코인 5배', cls: 'ev-gold' },
+  chest: { ic: '🎁', tag: '보물 상자 문제! 맞히면 아이템', cls: 'ev-chest' },
+  raid: { ic: '👾', tag: '보스 난입! 10초 안에 맞혀서 쫓아내!', cls: 'ev-raid' },
+};
+const RAID_TIME = 10;
+function rollEvents(qs, { boss, timer }) {
+  return qs.map((q, i) => {
+    if (i === 0 || q.map || q.ev !== undefined) return q; // 첫 문제와 지도 문제는 그대로
+    const r = Math.random();
+    const ev = r < 0.08 ? 'gold' : r < 0.13 ? 'chest' : r < 0.17 && !boss && !timer ? 'raid' : null;
+    return { ...q, ev };
+  });
+}
 function runQuiz(cfg) {
+  if (cfg.events && !cfg.resume) cfg.qs = rollEvents(cfg.qs, cfg);
   const st = {
     i: 0, results: [], streak: 0, maxStreak: 0, gained: 0, coins: 0,
     hearts: cfg.hearts ?? null, maxHearts: cfg.hearts ?? 0,
@@ -362,11 +380,16 @@ function runQuiz(cfg) {
     const isMap = !!q.map;
     const opts = isMap ? [] : shuffle([q.a, ...q.w]);
     const meta = isMap ? `${(REGIONS[q.map.r] || REGIONS.world).ic} 지도 찾기` : q.cat && CATS[q.cat] ? `${CATS[q.cat].ic} ${CATS[q.cat].name}` : '';
+    const ev = EVENTS[q.ev];
+    const timed = cfg.timer || q.ev === 'raid';
+    if (q.ev === 'raid') st.timerLen = RAID_TIME;
     const progress = cfg.speed
       ? `<div class="speedbar"><i style="width:${(st.speedLeft / cfg.speed) * 100}%"></i><span>⏱️ ${Math.ceil(st.speedLeft)}초 · 정답 ${correctCount()}개</span></div>`
-      : cfg.boss ? '' : `<div class="progress">${cfg.qs.map((x, j) => `<i class="${j < st.i ? (st.results[j] === true ? 'ok' : st.results[j] === false ? 'no' : 'skip') : j === st.i ? 'now' : ''} ${x.map ? 'mapq' : ''}"></i>`).join('')}</div>`;
-    const qcard = `<div class="qcard card ${isMap ? 'mapcard' : ''}">
-          <div class="qmeta"><span>${meta}${cfg.speed ? '' : ` · ${st.i + 1}/${cfg.qs.length}`}</span><span class="stars">${stars(q.d)}</span></div>
+      : cfg.bell ? `<div class="bellbar"><i style="width:${((cfg.bell.start + st.i - 1) / cfg.bell.total) * 100}%"></i><span>🔔 <b>${cfg.bell.start + st.i}</b> / ${cfg.bell.total}번째 문제</span></div>`
+      : cfg.boss ? '' :`<div class="progress">${cfg.qs.map((x, j) => `<i class="${j < st.i ? (st.results[j] === true ? 'ok' : st.results[j] === false ? 'no' : 'skip') : j === st.i ? 'now' : ''} ${x.map ? 'mapq' : ''}"></i>`).join('')}</div>`;
+    const qcard = `<div class="qcard card ${isMap ? 'mapcard' : ''} ${ev ? ev.cls : ''}">
+          ${ev ? `<div class="ev-tag">${ev.ic} ${ev.tag}</div>${q.ev === 'raid' ? '<span class="raider">👾</span>' : ''}` : ''}
+          <div class="qmeta"><span>${meta}${cfg.speed ? '' : cfg.bell ? ` · ${cfg.bell.start + st.i}번` : ` · ${st.i + 1}/${cfg.qs.length}`}</span><span class="stars">${stars(q.d)}</span></div>
           ${q.flag ? `<div class="big-flag">${q.flag}</div>` : ''}
           ${q.shape && SHAPES[q.shape] ? `<div class="silhouette">${shapeSvg(q.shape)}</div>` : ''}
           <div class="q">${esc(q.q)}</div><div id="hintbox"></div>
@@ -379,7 +402,7 @@ function runQuiz(cfg) {
     // .qa-l(문제) / .qa-r(보기): 넓은 가로 화면에서는 좌우 두 칸, 그 외에는 위아래
     $app.innerHTML = `${hud()}<div class="qa ${isMap ? 'has-map' : ''}"><div class="qa-l">${progress}
       ${cfg.boss ? arena() + qcard : `<div class="stage"><span id="who">${isMap ? JH.explorer() : JH.think()}</span>${qcard}</div>`}
-      ${cfg.timer ? `<div class="timer"><i id="tbar" class="${st.frozen ? 'frozen' : ''}"></i></div>` : ''}</div>
+      ${timed ? `<div class="timer"><i id="tbar" class="${st.frozen ? 'frozen' : ''}"></i></div>` : ''}</div>
       <div class="qa-r">${answerArea}
       ${itemBar}
       <div id="fb"></div></div></div>`;
@@ -405,7 +428,8 @@ function runQuiz(cfg) {
       if (st.i === 0 && !cfg.resume && cfg.startDamage && !st.breathed) dragonBreath();
       if (st.rage && cfg.boss.img === 'boss-6' && !isMap) inkSplat(); // 문어 보스 분노: 먹물
     }
-    if (cfg.timer) startTimer();
+    if (timed) startTimer();
+    if (ev) { sfx(q.ev === 'raid' ? 'siren' : 'fever'); buzz(30); if (q.ev === 'raid') shake(); }
   }
 
   function inkSplat() {
@@ -594,13 +618,25 @@ function runQuiz(cfg) {
       st.streak++; st.maxStreak = Math.max(st.maxStreak, st.streak);
       save.correct++; pc.ok++;
       save.bestStreak = Math.max(save.bestStreak, st.streak);
-      gain = q.d * 10 + Math.min(st.streak - 1, 5) * 2 + (map ? Math.round(map.pts / 50) : 0);
+      gain = (q.d * 10 + Math.min(st.streak - 1, 5) * 2 + (map ? Math.round(map.pts / 50) : 0)) * (q.ev === 'gold' ? 2 : 1);
       st.gained += gain;
       const fever = st.streak >= 5;
       const boosted = st.boost > 0;
       if (boosted) st.boost--;
-      const coins = (q.d + (map ? 1 : 0)) * (fever ? 2 : 1) * (st.magnet ? 2 : 1) * (boosted ? 2 : 1);
+      const coins = (q.d + (map ? 1 : 0)) * (fever ? 2 : 1) * (st.magnet ? 2 : 1) * (boosted ? 2 : 1) * (q.ev === 'gold' ? 5 : 1);
       st.coins += addCoins(coins, el); // 🏴‍☠️ 해적선이면 1.5배로 들어옴
+      // 🌟 깜짝 이벤트 보상
+      if (q.ev === 'gold') { save.ach.gold++; confetti(70); toast('🌟 황금 문제 성공! 코인 5배!'); }
+      if (q.ev === 'chest') {
+        const k = pick(Object.keys(ITEMS));
+        save.items[k] = (save.items[k] || 0) + 1;
+        sfx('open'); setTimeout(() => toast(`🎁 보물 상자! ${ITEMS[k].ic} ${ITEMS[k].name} +1`), 250);
+      }
+      if (q.ev === 'raid') {
+        st.coins += addCoins(20);
+        toast('👾 난입 보스를 쫓아냈다! 🪙+20');
+        document.querySelector('.raider')?.classList.add('flee');
+      }
       if (cfg.onWrongFixed) cfg.onWrongFixed(q);
       sfx(fever ? 'fever' : 'correct'); buzz(15);
       if (st.streak === 5) { document.body.classList.add('fever'); toast('🔥 피버 타임! 코인 2배!'); sikseven(document.getElementById('who')); }
@@ -620,6 +656,7 @@ function runQuiz(cfg) {
       st.streak = 0;
       document.body.classList.remove('fever');
       sfx('wrong');
+      if (q.ev === 'raid') document.querySelector('.raider')?.classList.add('laugh');
       if (!save.wrong.some((w) => w.k === q.k)) save.wrong.unshift({ k: q.k, q: q.q, a: q.a, w: q.w, d: q.d, e: q.e, flag: q.flag, flags: q.flags, cat: q.cat, map: q.map });
       save.wrong = save.wrong.slice(0, 300);
       if (st.hearts !== null) {

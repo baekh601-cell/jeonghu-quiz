@@ -268,6 +268,7 @@ async function playStage(w, k, resume) {
     title: boss ? `🏰 ${w.id}-보스` : `스테이지 ${info.title}`,
     qs: resume ? resume.qs : stageQuestions(w, info, boss ? info.hp + 6 : 8, !!boss),
     hearts: 3, boss, timer: boss ? (rideIs('balloon') ? 25 : 20) : null, // 🎈 +5초
+    events: true, // 🌟 깜짝 이벤트
     ...rideAbilities(boss),
     resume, onSnapshot: (s) => saveRun(w, k, 'quiz', s),
     onQuit: quit,
@@ -318,6 +319,8 @@ async function stageResult(w, k, r) {
   // 일반 스테이지를 깼으면 지도로 안 돌아가고 바로 다음 스테이지로 갈 수 있다 (보스 성 직전까지)
   const nx = r.cleared && info.kind !== 'boss' && info.kind !== 'bonus' ? nextStageOf(w, k) : null;
   const quickNext = nx && nx.k !== 'C' && unlocked(nx.w, nx.k) ? nx : null;
+  // 🎮 가끔(35%) 쉬어 가는 미니게임
+  const breakGame = r.cleared && info.kind !== 'boss' && info.kind !== 'bonus' && Math.random() < 0.35 ? pick(Object.keys(MINIGAMES)) : null;
 
   const title = !r.cleared ? (info.kind === 'boss' ? '보스에게 졌어…' : '아쉽다!') : info.kind === 'boss' ? '보스 격파!' : info.kind === 'bonus' ? '보너스 끝!' : '스테이지 클리어!';
   const who = !r.cleared ? JH.wrong() : info.kind === 'boss' ? JH.king() : JH.correct();
@@ -333,6 +336,7 @@ async function stageResult(w, k, r) {
       <p>${statLine}</p>
       <div class="coinline">🪙 +${(r.coins || 0) + bonus} ${bonus ? `<small>(클리어 보너스 ${bonus}${firstClear ? ', 첫 클리어!' : ''})</small>` : ''}</div>
       ${r.cleared ? '' : `<p class="hint">${info.kind === 'map' ? '평균 300점을 넘으면 클리어!' : '상점에서 ❤️ 하트나 🛡️ 방패 아이템을 사 가면 쉬워져요.'}</p>`}
+      ${breakGame ? `<button class="mini-offer press" data-a="mini"><span>🎮 쉬어 가기 미니게임!</span>${MINIGAMES[breakGame].ic} ${MINIGAMES[breakGame].name}</button>` : ''}
       ${quickNext ? `<button class="go press" data-a="quick">다음 스테이지 ${quickNext.w.id}-${quickNext.k} ▶</button>` : ''}
       <button class="${quickNext ? 'ghost' : 'go'} press" data-a="${r.cleared ? 'next' : 'retry'}">${r.cleared ? '지도로 🗺️' : '다시 도전! 🔁'}</button>
       <button class="ghost press" data-a="${r.cleared ? 'retry' : 'map'}">${r.cleared ? '한 번 더 하기 🔁' : '지도로'}</button>
@@ -348,6 +352,10 @@ async function stageResult(w, k, r) {
 
   const again = () => flyTo(() => playStage(w, k));
   $app.querySelector('[data-a=quick]')?.addEventListener('click', () => { sfx('tap'); flyTo(() => playStage(quickNext.w, quickNext.k)); });
+  $app.querySelector('[data-a=mini]')?.addEventListener('click', () => {
+    sfx('power');
+    flyTo(() => MINIGAMES[breakGame].run({ onQuit: () => toMap({ from: beforeCur }), onEnd: (m) => breakResult(m, quickNext, beforeCur) }));
+  });
   const back = async () => {
     if (info.kind === 'bonus' && r.cleared && !save.bonus[id]) { save.bonus[id] = 1; persist(); await openChest(false); }
     if (info.kind === 'boss' && firstClear) {
@@ -361,6 +369,20 @@ async function stageResult(w, k, r) {
   $app.querySelector('[data-a=next]')?.addEventListener('click', () => { sfx('tap'); back(); });
   $app.querySelector('[data-a=map]')?.addEventListener('click', () => { sfx('tap'); toMap(); });
   $app.querySelectorAll('[data-a=retry]').forEach((b) => b.addEventListener('click', () => { sfx('tap'); again(); }));
+}
+// 스테이지 사이 미니게임을 끝낸 뒤
+function breakResult(m, next, from) {
+  $app.innerHTML = `<div class="result-screen">
+      <h1 class="result-title">${m.title}</h1>
+      ${JH.correct()}
+      <p>${m.sub}</p>
+      <div class="coinline">🪙 +${m.coins}</div>
+      ${next ? `<button class="go press" data-a="quick">다음 스테이지 ${next.w.id}-${next.k} ▶</button>` : ''}
+      <button class="${next ? 'ghost' : 'go'} press" data-a="map">지도로 🗺️</button>
+    </div>`;
+  $app.querySelector('[data-a=quick]')?.addEventListener('click', () => { sfx('tap'); flyTo(() => playStage(next.w, next.k)); });
+  $app.querySelector('[data-a=map]').onclick = () => { sfx('tap'); toMap({ from }); };
+  setTimeout(checkBadges, 800);
 }
 function wrongReview(r) {
   const wrongs = r.qs.filter((_, i) => r.results[i] === false);
@@ -484,6 +506,9 @@ function freeMenu() {
       ${t('map', '지도에서 도시 찾기', '🗺️', 'icon-map', '세계·한국 지도', '#3ddc97', true)}
       ${t('survival', '지도 서바이벌', '🎯', 'icon-map', `하트 3개로 어디까지? 최고 ${save.survivalBest.toLocaleString()}점`, '#ff6b6b')}
       ${t('shape', '나라 모양 맞히기', '🧩', 'icon-capital', `실루엣만 보고! 최고 ${save.shapeBest}연속`, '#1f2a5a')}
+      ${t('bell', '도전! 골든벨', '🔔', 'icon-bell', `50문제, 틀리면 끝! 최고 ${save.bellBest}문제${save.bellWins ? ` · 🔔×${save.bellWins}` : ''}`, '#ffb000', true)}
+      ${t('memo', '국기 짝맞추기', '🃏', 'icon-memo', '국기와 나라 이름 짝 찾기', '#ff8fb1')}
+      ${t('puzzle', '지도 퍼즐', '🗺️', 'icon-puzzle', '이웃 나라 5곳을 제자리에', '#3ddc97')}
       ${Object.entries(CATS).map(([k, c]) => t(k, c.name, c.ic, c.icon, `${countFor(k)}문제`, c.c)).join('')}
       ${t('mix', '전부 섞기', '🌏', 'icon-mix', '모든 주제에서', '#4fb3ff')}
       ${t('wrong', '오답 노트', '📒', 'icon-wrongnote', `${save.wrong.length}개`, '#ff6b6b')}
@@ -493,6 +518,11 @@ function freeMenu() {
     sfx('tap');
     const k = b.dataset.free;
     if (k === 'map') return show(freeMapSetup);
+    if (k === 'bell') return flyTo(goldenBell);
+    if (MINIGAMES[k]) {
+      const start = () => MINIGAMES[k].run({ onQuit: () => show(freeMenu), onEnd: (r) => freeResult({ ...r, good: true, again: start }) });
+      return flyTo(start);
+    }
     if (k === 'survival') {
       const start = () => runMap({
         title: '🎯 지도 서바이벌', cities: survivalCities(), lives: 3, revive: rideIs('heli'), onQuit: () => show(freeMenu),
@@ -549,7 +579,7 @@ function freeSetup(cat) {
     $app.querySelectorAll('[data-n]').forEach((b) => (b.onclick = () => { sfx('tap'); count = +b.dataset.n; draw(); }));
     $app.querySelector('.go').onclick = () => {
       const start = () => runQuiz({
-        title: `${c.ic} ${c.name}`, qs: cat === 'mix' ? mixedQuestions(count, diff) : drawQuestions(questionsFor(cat), count, diff), hearts: null,
+        title: `${c.ic} ${c.name}`, qs: cat === 'mix' ? mixedQuestions(count, diff) : drawQuestions(questionsFor(cat), count, diff), hearts: null, events: true,
         onQuit: () => show(freeMenu), onEnd: (r) => freeResult({ ...r, again: start }),
       });
       flyTo(start);
@@ -559,9 +589,10 @@ function freeSetup(cat) {
 }
 function freeResult(r) {
   const pct = r.total ? r.correct / r.total : 0;
+  const good = r.good ?? pct >= 0.7;
   $app.innerHTML = `<div class="result-screen">
       <h1 class="result-title">${r.title || `${r.total}문제 중 ${r.correct}개 정답`}</h1>
-      ${pct >= 0.7 ? JH.correct() : JH.wrong()}
+      ${good ? JH.correct() : JH.wrong()}
       <p>${r.sub || (pct === 1 ? '완벽해! 만점이야!' : pct >= 0.7 ? '잘했어!' : '다음엔 더 잘할 수 있어!')}</p>
       <div class="coinline">🪙 +${r.coins || 0}</div>
       <button class="go press" data-a="again">한 번 더! 🔁</button>
@@ -573,6 +604,55 @@ function freeResult(r) {
   $app.querySelector('[data-a=again]').onclick = () => { sfx('tap'); flyTo(r.again); };
   $app.querySelector('[data-a=menu]').onclick = () => { sfx('tap'); show(freeMenu); };
 }
+// ───────── 🔔 도전! 골든벨 ─────────
+// 모든 주제에서 50문제, 점점 어려워진다. 하트 1개(틀리면 끝)지만 딱 한 번 패자부활전 기회가 있다.
+function goldenBell() {
+  const seen = new Set();
+  const uniq = (list) => list.filter((q) => !seen.has(q.k) && seen.add(q.k));
+  const qs = [...uniq(mixedQuestions(15, [2])), ...uniq(mixedQuestions(20, [2, 3])), ...uniq(mixedQuestions(15, [3]))];
+  const TOTAL = qs.length;
+  let solved = 0, coins = 0, revived = false;
+
+  const finish = (won) => {
+    const best = solved > save.bellBest;
+    save.bellBest = Math.max(save.bellBest, solved);
+    let prize = 0;
+    if (won) { save.bellWins++; prize = addCoins(100); }
+    persist();
+    if (won) celebrate('🔔 골든벨을 울렸다!', `${TOTAL}문제를 전부 통과했어요!<br>${charJosa('이', '가')} 오늘의 골든벨 주인공! 🪙 +${prize}`);
+    freeResult({
+      good: won || best, correct: solved, total: TOTAL, coins: coins + prize, again: goldenBell,
+      title: won ? '🔔 골든벨을 울렸다!' : `${solved}문제 통과!`,
+      sub: won ? '완벽해! 진짜 퀴즈왕!' : best ? '🎉 새 최고 기록!' : `최고 기록 ${save.bellBest}문제`,
+    });
+  };
+  const run = (from) => runQuiz({
+    title: '🔔 도전! 골든벨', qs: qs.slice(from), hearts: 1, items: false, bell: { start: from + 1, total: TOTAL }, events: true,
+    onQuit: () => show(freeMenu),
+    onEnd: async (r) => {
+      solved += r.correct; coins += r.coins;
+      if (r.cleared) return finish(true);
+      if (revived) return finish(false);
+      const next = from + r.total; // 틀린 문제 다음부터
+      const v = await modal(`<div class="upd-ic">🔔</div><h2>패자부활전!</h2><p>어려운 문제 하나를 맞히면 다시 살아나요.<br>기회는 딱 한 번!</p><button class="go press" data-v="go">도전! 💪</button><button class="ghost press" data-v="no">여기까지 할래</button>`, { close: false });
+      if (v !== 'go') return finish(false);
+      revived = true;
+      const rq = mixedQuestions(6, [3]).find((q) => !seen.has(q.k)) || mixedQuestions(1, [3])[0];
+      flyTo(() => runQuiz({
+        title: '🔔 패자부활전', qs: [rq], hearts: null, items: false, onQuit: () => show(freeMenu),
+        onEnd: (r2) => {
+          if (!r2.correct) return finish(false);
+          solved += 1; coins += r2.coins;
+          if (next >= TOTAL) return finish(true);
+          toast('🔔 부활! 다시 도전!'); sfx('power');
+          flyTo(() => run(next));
+        },
+      }));
+    },
+  });
+  run(0);
+}
+
 function freeMapSetup() {
   let region = 'world', diff = 0;
   const draw = () => {
