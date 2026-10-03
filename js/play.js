@@ -46,7 +46,7 @@ function mapPicker(wrap, city, onPick, opts = {}) {
   const land = window.MAP_DATA || { world: [], korea: [] };
   const paths = land.world.map((d) => `<path class="land" d="${d}"/>`).join('')
     + (city.r === 'kr' ? land.korea.map((d) => `<path class="land kr" d="${d}"/>`).join('') : '');
-  wrap.innerHTML = `<svg preserveAspectRatio="xMidYMid meet"><g class="world" transform="scale(${R.kx},1)">${paths}<g class="radar"></g><g class="marks"></g></g></svg>
+  wrap.innerHTML = `<svg preserveAspectRatio="xMidYMid meet"><g class="world" transform="scale(${R.kx},1)">${paths}<g class="marks"></g></g></svg>
     <div class="zoom"><button data-z="in" aria-label="확대">+</button><button data-z="out" aria-label="축소">−</button></div>`;
   const svg = wrap.querySelector('svg'), marks = svg.querySelector('.marks');
 
@@ -79,13 +79,14 @@ function mapPicker(wrap, city, onPick, opts = {}) {
     return [cx - v[2] / 2, cy - v[3] / 2, v[2], v[3]];
   }
 
-  let guess = null, done = false, interacting = false, raf = 0;
+  let guess = null, ghost = null, done = false, interacting = false, raf = 0;
   const pinR = () => 8 / frame(drawn).ppu; // 확대해도 화면에서 항상 비슷한 크기
   // g 가 가로로 kx 배 줄어 있으니 rx 를 늘려서 동그랗게 보이게 한다
   const pin = (cls, lon, lat) => `<ellipse class="${cls}" cx="${lon}" cy="${-lat}" rx="${pinR() / R.kx}" ry="${pinR()}"/>`;
   function redraw() {
     if (!done) { marks.innerHTML = guess ? pin('pin-guess', guess.lon, guess.lat) : ''; return; }
-    marks.innerHTML = (guess ? `<line class="pin-line" x1="${guess.lon}" y1="${-guess.lat}" x2="${city.lon}" y2="${-city.lat}"/>` + pin('pin-guess', guess.lon, guess.lat) : '')
+    marks.innerHTML = (ghost ? `<line class="beam-line" x1="${ghost.lon}" y1="${-ghost.lat}" x2="${guess.lon}" y2="${-guess.lat}"/>` + pin('pin-ghost', ghost.lon, ghost.lat) : '')
+      + (guess ? `<line class="pin-line" x1="${guess.lon}" y1="${-guess.lat}" x2="${city.lon}" y2="${-city.lat}"/>` + pin('pin-guess', guess.lon, guess.lat) : '')
       + pin('pin-real', city.lon, city.lat);
   }
   // 움직이는 중: drawn → vb 로 보이도록 transform 만 계산 (다시 그리지 않음)
@@ -211,20 +212,36 @@ function mapPicker(wrap, city, onPick, opts = {}) {
     const r = wrap.getBoundingClientRect(); animateZoom(b.dataset.z === 'in' ? 2 : 0.5, r.left + r.width / 2, r.top + r.height / 2);
   }));
 
-  // 🛸 UFO 레이더: 정답 근처에 탐지 원 (정답이 딱 가운데가 되지 않게 조금 비켜서)
-  if (opts.radar ?? rideIs('ufo')) {
-    const rad = city.r === 'kr' ? 0.45 : 11; // 위도 기준 약 50km / 1,200km
-    const ang = Math.random() * Math.PI * 2, off = rad * (0.25 + Math.random() * 0.35);
-    const cx = city.lon + (Math.cos(ang) * off) / Math.cos((city.lat * Math.PI) / 180), cy = -(city.lat + Math.sin(ang) * off);
-    svg.querySelector('.radar').innerHTML = `<ellipse class="radar-ring" cx="${cx}" cy="${cy}" rx="${rad / Math.cos((city.lat * Math.PI) / 180)}" ry="${rad}"/>`;
-  }
+  // 🛸 UFO 견인 광선: 찍은 곳에서 정답까지 거리의 30%만큼 핀을 끌어당긴다.
+  // (예전 '레이더'는 정답 근처에 원을 그려 줘서 원 안만 찍으면 거의 다 맞았다 → 실력이 그대로 반영되게 바꿈)
+  // 세계 지도 정답 기준 약 1,400km → 2,000km, 한국 92km → 130km 까지 넓어지는 정도
+  const BEAM = 0.3;
+  const beamOn = () => guess && (opts.beam ?? rideIs('ufo'));
 
   return {
     hasGuess: () => !!guess,
     reveal() {
       stopFling();
       done = true;
-      const km = guess ? haversine(guess.lat, guess.lon, city.lat, city.lon) : Infinity;
+      let km = guess ? haversine(guess.lat, guess.lon, city.lat, city.lon) : Infinity;
+      const from = guess;
+      if (beamOn()) {
+        const km0 = km;
+        ghost = from;
+        km *= 1 - BEAM;
+        let dLon = city.lon - from.lon; // 날짜 변경선을 넘을 때는 짧은 쪽으로
+        if (dLon > 180) dLon -= 360; else if (dLon < -180) dLon += 360;
+        const to = { lon: from.lon + dLon * BEAM, lat: from.lat + (city.lat - from.lat) * BEAM };
+        const t0 = performance.now();
+        (function pull(t) { // 0.7초 동안 핀이 스르륵 끌려간다
+          const k = Math.min(1, (t - t0) / 700), e = 1 - (1 - k) ** 3;
+          guess = { lon: from.lon + (to.lon - from.lon) * e, lat: from.lat + (to.lat - from.lat) * e };
+          redraw();
+          if (k < 1 && svg.isConnected) requestAnimationFrame(pull);
+        })(t0);
+        toast(`🛸 견인 광선! ${Math.round(km0).toLocaleString()}km → ${Math.round(km).toLocaleString()}km`);
+        sfx('power');
+      }
       const pts = guess ? Math.round(1000 * Math.exp(-km / R.scale)) : 0;
       // 두 점이 다 보이게 화면 이동
       const pts2 = guess ? [guess, city] : [city];

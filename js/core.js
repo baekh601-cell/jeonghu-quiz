@@ -99,7 +99,7 @@ const RIDES = {
   ship: { name: '해적선', ic: '🏴‍☠️', price: 120, ab: '보물 사냥꾼', desc: '얻는 코인 1.5배' },
   heli: { name: '헬리콥터', ic: '🚁', price: 150, ab: '구조 출동', desc: '스테이지마다 한 번, 하트가 다 떨어지면 하트 1개로 부활' },
   rocket: { name: '로켓', ic: '🚀', price: 220, ab: '로켓 부스터', desc: '크리티컬 시간 5초→8초, 필살기 게이지 3칸→2칸' },
-  ufo: { name: 'UFO', ic: '🛸', price: 280, ab: '외계 레이더', desc: '지도 문제에서 정답 근처에 탐지 원이 보여요' },
+  ufo: { name: 'UFO', ic: '🛸', price: 280, ab: '견인 광선', desc: '지도 문제에서 찍은 핀을 정답 쪽으로 30% 끌어당겨요' },
   dragon: { name: '드래곤', ic: '🐉', price: 500, ab: '드래곤 브레스', desc: '보스 HP를 20% 깎고 시작, 필살기 데미지 +2' },
 };
 const rideIcon = () => (RIDES[save.ride] || RIDES.plane).ic;
