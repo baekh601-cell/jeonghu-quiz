@@ -589,7 +589,7 @@ function runQuiz(cfg) {
     save.seen[q.k] = true;
     const pc = (save.perCat[q.cat] = save.perCat[q.cat] || { n: 0, ok: 0 });
     pc.n++;
-    let gain = 0, blocked = false;
+    let gain = 0, blocked = false, crit = false;
     if (ok) {
       st.streak++; st.maxStreak = Math.max(st.maxStreak, st.streak);
       save.correct++; pc.ok++;
@@ -607,7 +607,7 @@ function runQuiz(cfg) {
       else if (st.streak > 5 && st.streak % 5 === 0) { confetti(50); toast(`🔥 ${st.streak}연속!`); sikseven(document.getElementById('who')); }
       if (cfg.boss) {
         const special = st.gauge >= GAUGE;
-        const crit = !!cfg.timer && spent <= (cfg.critWindow || 5); // 🚀 로켓: 8초
+        crit = !!cfg.timer && spent <= (cfg.critWindow || 5); // 🚀 로켓: 8초
         st.gauge = special ? 0 : st.gauge + 1;
         let dmg = 1 + (crit ? 1 : 0) + (special ? 2 + (cfg.specialBonus || 0) : 0); // 🐉 드래곤: 필살기 +2
         if (boosted) dmg *= 2;
@@ -635,7 +635,9 @@ function runQuiz(cfg) {
       if (cfg.boss) bossAttack(blocked);
     }
     addXp(gain);
+    noteAnswer(q, ok, { map, crit, fever: ok && st.streak === 5 });
     persist();
+    checkBadges();
 
     // 보스 HP 는 발사체가 닿은 뒤 줄어들므로, 여기서는 줄어들 값으로 판정
     const bossDown = cfg.boss && ok && st.hp - (st.pending || 0) <= 0;
@@ -759,6 +761,7 @@ function runMap(cfg) {
       st.total += gained;
       st.log.push({ city, km, pts });
       save.seen[city.k] = true;
+      if (pts >= 900) save.ach.bull++; // 🏅 배지: 명사수
       addXp(Math.round(pts / 50));
       addCoins(pts >= 900 ? 5 : pts >= 600 ? 3 : pts >= 300 ? 1 : 0, this);
       sfx(pts >= 600 ? 'correct' : pts >= 300 ? 'coin' : 'wrong');
@@ -787,6 +790,7 @@ function runMap(cfg) {
         }
       }
       persist();
+      checkBadges();
       document.getElementById('who').innerHTML = pts >= 300 ? JH.correct() : JH.wrong();
       if (pts >= 900) { confetti(60); sikseven(document.getElementById('who')); }
       const cheer = pts >= 900 ? '거의 정확해! 🎯' : pts >= 600 ? '아주 가까워! 👏' : pts >= 300 ? '괜찮아! 🙂' : '조금 멀었어 😅';
