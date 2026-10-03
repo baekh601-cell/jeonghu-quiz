@@ -4,7 +4,9 @@
 // 수도·국기처럼 "어떤 나라를 맞혔는지"가 필요한 것은 save.ach 에 따로 모은다 (noteAnswer).
 
 save.badges = save.badges || {};
-save.ach = { caps: {}, flags: {}, bull: 0, crit: 0, fever: 0, fixed: 0, nohit: 0, ...(save.ach || {}) };
+save.ach = { caps: {}, flags: {}, bull: 0, crit: 0, fever: 0, fixed: 0, nohit: 0, gold: 0, memo: 0, puzzle: 0, ...(save.ach || {}) };
+save.bellBest = save.bellBest || 0; // 골든벨 최고 기록 (맞힌 문제 수)
+save.bellWins = save.bellWins || 0; // 골든벨을 울린 횟수
 
 const TIER = { // 등급별 보상 코인과 테두리 색
   b: { name: '브론즈', coins: 10, c: '#d08a4c' },
@@ -60,6 +62,7 @@ const BADGES = [
   { id: 'catSci', ic: '🔬', name: '꼬마 과학자', t: 's', sec: 'cat', desc: '과학 상식 정답 100개', p: () => [okIn('science'), 100] },
   { id: 'catKbo', ic: '⚾', name: '야구 해설위원', t: 's', sec: 'cat', desc: '프로야구 정답 100개', p: () => [okIn('kbo'), 100] },
   { id: 'catNon', ic: '🤪', name: '넌센스 왕', t: 's', sec: 'cat', desc: '넌센스 정답 100개', p: () => [okIn('nonsense'), 100] },
+  { id: 'catMc', ic: '⛏️', name: '마크 박사', t: 's', sec: 'cat', desc: '마인크래프트 정답 100개', p: () => [okIn('minecraft'), 100] },
   { id: 'fixed', ic: '📒', name: '오답 정복자', t: 's', sec: 'cat', desc: '오답 노트에서 30문제 다시 맞히기', p: () => [save.ach.fixed, 30] },
   // 보스·도전
   { id: 'boss1', ic: '⚔️', name: '첫 보스 격파', t: 'b', sec: 'boss', desc: '보스를 한 번 쓰러뜨리기', p: () => [save.bosses, 1] },
@@ -69,12 +72,19 @@ const BADGES = [
   { id: 'speed25', ic: '🚀', name: '스피드 25', t: 's', sec: 'boss', desc: '스피드 챌린지 25개 이상', p: () => [save.speedBest, 25] },
   { id: 'castles', ic: '🏳️', name: '왕국 해방', t: 'g', sec: 'boss', desc: '8개 월드의 성을 모두 깨기', p: () => [WORLDS.filter((w) => save.stages[`${w.id}-C`]).length, WORLDS.length] },
   { id: 'allstar', ic: '🌟', name: '올스타', t: 'r', sec: 'boss', desc: '모든 스테이지 별 3개', p: () => [totalStars(), TOTAL_STARS] },
+  // 이벤트·미니게임
+  { id: 'gold1', ic: '🌟', name: '반짝반짝', t: 'b', sec: 'fun', desc: '황금 문제 맞히기', p: () => [save.ach.gold, 1] },
+  { id: 'gold10', ic: '💰', name: '황금 손', t: 's', sec: 'fun', desc: '황금 문제 10번 맞히기', p: () => [save.ach.gold, 10] },
+  { id: 'bell20', ic: '🔔', name: '골든벨 20', t: 's', sec: 'fun', desc: '골든벨 20문제 통과', p: () => [save.bellBest, 20] },
+  { id: 'bell50', ic: '🛎️', name: '골든벨을 울려라', t: 'r', sec: 'fun', desc: '골든벨 50문제 전부 통과', p: () => [save.bellWins, 1] },
+  { id: 'memo10', ic: '🃏', name: '짝맞추기 달인', t: 's', sec: 'fun', desc: '국기 짝맞추기 10번 완성', p: () => [save.ach.memo, 10] },
+  { id: 'puzzle10', ic: '🧩', name: '지도 퍼즐 왕', t: 's', sec: 'fun', desc: '지도 퍼즐 10번 완성', p: () => [save.ach.puzzle, 10] },
   // 수집·대전
   { id: 'rides', ic: '🐉', name: '탈것 컬렉터', t: 'g', sec: 'etc', desc: '탈것을 전부 모으기', p: () => [save.rides.length, Object.keys(RIDES).length] },
   { id: 'duel1', ic: '🤝', name: '첫 대전 승리', t: 'b', sec: 'etc', desc: '2인 대전에서 이기기', p: () => [(save.duel || {}).win || 0, 1] },
   { id: 'duel10', ic: '🥊', name: '대전 챔피언', t: 's', sec: 'etc', desc: '2인 대전 10번 이기기', p: () => [(save.duel || {}).win || 0, 10] },
 ];
-const BADGE_SECS = { basic: '⭐ 기본', geo: '🌏 세계 지리·국기', map: '🗺️ 지도', cat: '🎓 주제 박사', boss: '⚔️ 보스·도전', etc: '🎒 수집·대전' };
+const BADGE_SECS = { basic: '⭐ 기본', geo: '🌏 세계 지리·국기', map: '🗺️ 지도', cat: '🎓 주제 박사', boss: '⚔️ 보스·도전', fun: '🎉 이벤트·미니게임', etc: '🎒 수집·대전' };
 
 // 문제 하나를 풀 때마다 (runQuiz settle 에서)
 function noteAnswer(q, ok, { map, crit, fever } = {}) {

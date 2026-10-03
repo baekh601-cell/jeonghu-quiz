@@ -574,6 +574,54 @@ body.wide .qa.has-map .quizmap { flex: none; min-height: 260px; height: calc(100
 .title-row .ghost small { font-size: 13px; }
 .upd-ic { font-size: 60px; line-height: 1.1; animation: bob 1.6s ease-in-out infinite; }
 
+/* ═════════ 🌟 깜짝 이벤트 (js/play.js EVENTS) ═════════ */
+.ev-tag { display: inline-block; margin: -4px 0 8px; padding: 3px 12px; border: 2px solid var(--navy); border-radius: 99px; font-size: 15px; background: var(--sun); animation: evPulse 1s ease-in-out infinite; }
+.qcard.ev-gold { background: linear-gradient(135deg, #fff7cf, #ffe27a 45%, #fff7cf 55%, #ffd43b); background-size: 300% 300%; animation: goldShine 3s linear infinite; box-shadow: 0 5px 0 var(--navy), 0 0 22px #ffc40088; }
+.qcard.ev-chest .ev-tag { background: #ffd9a8; }
+.qcard.ev-raid { background: #f3e8ff; }
+.qcard.ev-raid .ev-tag { background: #b57cff; color: #fff; }
+.raider { position: absolute; right: -6px; top: -26px; font-size: 44px; animation: raid 1.2s ease-in-out infinite; pointer-events: none; }
+.raider.flee { animation: flee .8s ease-in forwards; }
+.raider.laugh { animation: laugh .3s ease-in-out 4; }
+@keyframes evPulse { 50% { transform: scale(1.06); } }
+@keyframes goldShine { to { background-position: 300% 0; } }
+@keyframes raid { 50% { transform: translateY(-6px) rotate(10deg); } }
+@keyframes flee { to { transform: translate(140px, -120px) rotate(360deg) scale(.3); opacity: 0; } }
+@keyframes laugh { 50% { transform: rotate(-15deg) scale(1.2); } }
+
+/* ═════════ 🔔 골든벨 ═════════ */
+.bellbar { position: relative; height: 34px; border: var(--edge); border-radius: 99px; background: #fff; overflow: hidden; margin-bottom: 12px; }
+.bellbar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ffe27a, #ffb000); transition: width .4s; }
+.bellbar span { position: relative; display: block; text-align: center; line-height: 30px; font-size: 17px; }
+.bellbar b { font-weight: 400; font-size: 21px; color: var(--coral); }
+
+/* ═════════ 🎮 미니게임 (js/minigames.js) ═════════ */
+.mini-offer { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 16px; padding: 10px; border: var(--edge); border-radius: 18px; box-shadow: var(--lift); background: linear-gradient(135deg, #c9f2ff, #e9d8ff); font-size: 20px; animation: evPulse 1.4s ease-in-out infinite; }
+.mini-offer span { font-size: 14px; color: var(--muted); }
+.memo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+body.wide .memo-grid { grid-template-columns: repeat(8, 1fr); max-width: 900px; margin-inline: auto; } /* 가로 화면: 16장을 2줄로 */
+.memo { aspect-ratio: 3 / 4; border: var(--edge); border-radius: 14px; box-shadow: 0 4px 0 var(--navy); background: var(--sky); display: grid; place-items: center; padding: 4px; overflow: hidden; }
+.memo .back { font-size: 34px; color: #fff; text-shadow: 2px 2px 0 var(--navy); }
+.memo .front { display: none; font-size: 15px; line-height: 1.15; word-break: keep-all; }
+.memo .front.flag { font-size: 44px; line-height: 1; }
+.memo.open, .memo.done { background: var(--paper); animation: flipIn .25s ease-out; }
+.memo.open .back, .memo.done .back { display: none; }
+.memo.open .front, .memo.done .front { display: block; }
+.memo.done { background: #d6f7e6; border-color: #1f8a5a; box-shadow: 0 4px 0 #1f8a5a; }
+@keyframes flipIn { from { transform: rotateY(90deg); } }
+.pz-wrap { padding: 6px; overflow: hidden; }
+.pz-map { display: block; width: 100%; height: min(calc(52vh / var(--z, 1)), 420px); background: #bfe6ff; border-radius: 12px; }
+.pz-map .land { fill: #eadfc4; }
+.pz { fill: #fffbea; stroke: var(--navy); stroke-width: 2.5; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .2s; animation: pzWait 1.6s ease-in-out infinite; }
+.pz.sel { fill: var(--sun); animation: none; }
+.pz.bad { fill: var(--coral); }
+.pz.ok { cursor: default; animation: none; }
+@keyframes pzWait { 50% { fill: #fff0b8; } }
+.pz-labels text { text-anchor: middle; dominant-baseline: middle; fill: var(--navy); paint-order: stroke; stroke: #fff; stroke-linejoin: round; pointer-events: none; font-family: inherit; }
+.pz-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; }
+.pz-chip { background: var(--paper); border: var(--edge); border-radius: 99px; box-shadow: 0 3px 0 var(--navy); padding: 6px 14px; font-size: 17px; }
+.pz-chip.sel { background: var(--sun); transform: translateY(-3px); }
+
 /* ═════════ 2인 대전 ═════════ */
 .char-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .char-card { display: flex; flex-direction: column; align-items: center; padding: 10px 8px 12px; gap: 4px; position: relative; }

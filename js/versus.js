@@ -19,7 +19,7 @@ function sampleR(rng, arr, n) { // 겹치지 않게 n개
 // 구성: 문제은행 7 + 세계 지리 2 + 지도 찾기 1 (n=10 기준), 난이도는 보통·어려움
 function duelQuestions(seed, n = 10) {
   const rng = rngOf(seed);
-  const bank = ['history', 'science', 'kbo', 'nonsense'].flatMap((cat) => (QB.banks[cat] || []).filter((q) => q.d >= 2).map((q, i) => ({ ...q, cat, k: `duel:${cat}:${i}` })));
+  const bank = ['history', 'science', 'kbo', 'nonsense', 'minecraft'].flatMap((cat) => (QB.banks[cat] || []).filter((q) => q.d >= 2).map((q, i) => ({ ...q, cat, k: `duel:${cat}:${i}` })));
   const withCap = COUNTRIES.filter((c) => c.c && c.d >= 2 && !c.c.startsWith(c.n.replace(/ .*/, '')));
   const geo = sampleR(rng, withCap, Math.max(1, Math.round(n * 0.2))).map((c) => {
     const near = withCap.filter((x) => x !== c && x.cont === c.cont);

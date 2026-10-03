@@ -297,6 +297,7 @@ const CATS = {
   science: { name: '과학 상식', ic: '🔬', icon: 'icon-science', desc: '우주·인체·자연', c: '#3ddc97' },
   kbo: { name: '프로야구', ic: '⚾', icon: 'icon-kbo', desc: 'KBO 선수·구단', c: '#1f2a5a' },
   nonsense: { name: '넌센스', ic: '🤪', icon: 'icon-nonsense', desc: '머리를 말랑말랑', c: '#b57cff' },
+  minecraft: { name: '마인크래프트', ic: '⛏️', icon: 'icon-minecraft', desc: '몹·제작·레드스톤', c: '#5b8c32' },
 };
 // 받침에 따라 은/는, 이/가 붙이기 (괄호 뒤는 괄호 앞 글자 기준)
 function josa(word, withJong, noJong) {
