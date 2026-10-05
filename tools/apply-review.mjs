@@ -24,6 +24,10 @@ const BATCHES = {
     { file: 'minecraft', cat: 'minecraft', reviews: ['minecraft'] },
     { file: 'minecraft2', cat: 'minecraft', reviews: ['minecraft2'] },
   ],
+  samguk: [
+    { file: 'samguk', cat: 'samguk', reviews: ['samguk'] },
+    { file: 'samguk2', cat: 'samguk', reviews: ['samguk2'] },
+  ],
 };
 const batch = BATCHES[process.argv[2]];
 if (!batch) { console.error(`사용: node tools/apply-review.mjs <${Object.keys(BATCHES).join('|')}>`); process.exit(1); }

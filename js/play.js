@@ -33,7 +33,7 @@ function haversine(lat1, lon1, lat2, lon2) {
 // 도시 하나를 퀴즈 문제 형태로
 function mapQuestion(city) {
   const where = city.r === 'kr' ? city.n : `${city.n}(${city.co})`;
-  return { k: city.k, map: city, cat: 'map', d: city.d, q: `📍 ${josa(where, '은', '는')} 어디에 있을까? 지도에서 콕!`, a: city.n, w: [], e: '' };
+  return { k: city.k, map: city, cat: 'map', d: city.d, q: `${city.ic || '📍'} ${josa(where, '은', '는')} 어디에 있을까? 지도에서 콕!`, a: city.n, w: [], e: city.e || '' };
 }
 
 /**
@@ -689,7 +689,7 @@ function runQuiz(cfg) {
     const head = map
       ? (ok ? `${map.pts >= 900 ? '거의 정확해! 🎯' : '정답! 가까워! 👏'} +${map.pts}점` : `${timeout ? '⏰ 시간 초과! ' : ''}조금 멀었어 😅 +${map.pts}점`)
       : ok ? pick(['정답! 🎉', '맞았어! 👏', '대단해! 🌟', `역시 ${charName()}! 😎`]) : `${timeout ? '⏰ 시간 초과! ' : ''}정답은 "${esc(q.a)}"`;
-    const body = map ? `실제 위치(빨간 점)와 ${distText(map.km)} 떨어졌어요. (${MAP_OK}점 이상이면 정답)` : q.e ? esc(q.e) : '';
+    const body = map ? `실제 위치(빨간 점)와 ${distText(map.km)} 떨어졌어요. (${MAP_OK}점 이상이면 정답)${q.e ? `<br>${esc(q.e)}` : ''}` : q.e ? esc(q.e) : '';
     document.getElementById('fb').innerHTML = `
       <div class="feedback card ${ok ? 'ok' : 'no'}"><b>${head}</b>${body}${q.shape && SHAPES[q.shape] ? locatorSvg(q.shape) : ''}</div>
       <button class="go press ${ok ? 'mint' : ''}" ${cfg.boss ? 'disabled' : ''}>${nextLabel}</button>`;
@@ -754,7 +754,7 @@ function runMap(cfg) {
     }
     const city = cfg.cities[st.i];
     const R = REGIONS[city.r] || REGIONS.world;
-    const label = city.r === 'kr' ? esc(city.n) : `${esc(city.n)} <small>(${esc(city.co)})</small>`;
+    const label = (city.ic ? `${city.ic} ` : '') + (city.r === 'kr' ? esc(city.n) : `${esc(city.n)} <small>(${esc(city.co)})</small>`);
     const bossBox = cfg.boss ? `<div class="boss card mini" id="boss"><div class="taunt" id="taunt"></div><div class="boss-art">${art(cfg.boss.img, cfg.boss.emoji, 'bossimg')}</div>
       <div class="boss-info"><b>${cfg.boss.name}</b><div class="hpbar"><i style="width:${(Math.max(0, st.bossHp) / cfg.boss.hp) * 100}%"></i></div><small>HP ${Math.max(0, st.bossHp).toLocaleString()}</small></div></div>` : '';
     const streakChip = st.lives !== null && st.streak >= 1 ? `<span class="chip">🔥${st.streak}</span>` : '';
@@ -764,7 +764,7 @@ function runMap(cfg) {
       <div class="stage"><span id="who">${JH.explorer()}</span>
         <div class="qcard card">
           <div class="qmeta"><span>${R.ic} ${R.name} 지도 · ${st.lives !== null ? `${st.i + 1}번째 도시` : `${st.i + 1}/${cfg.cities.length}`}</span><span class="stars">${stars(city.d)}</span></div>
-          <div class="maptarget">📍 ${label}</div>
+          <div class="maptarget">${city.ic ? '' : '📍 '}${label}</div>
         </div>
       </div></div>
       <div class="qa-r"><div class="mapwrap"></div></div>
@@ -833,7 +833,7 @@ function runMap(cfg) {
       const cheer = pts >= 900 ? '거의 정확해! 🎯' : pts >= 600 ? '아주 가까워! 👏' : pts >= 300 ? '괜찮아! 🙂' : '조금 멀었어 😅';
       const bonusTxt = gained > pts ? ` <small>(🔥${st.streak}연속 x${(gained / pts).toFixed(1)})</small>` : '';
       const lifeTxt = lost ? `<br>💔 ${MAP_OK}점이 안 돼서 하트가 하나 줄었어요.` : '';
-      document.getElementById('mapfb').innerHTML = `<div class="feedback card ${pts >= 300 ? 'ok' : 'no'}"><b>${cheer} +${gained}점${bonusTxt}</b>실제 위치(빨간 점)와 ${distText(km)} 떨어졌어요.${lifeTxt}</div>`;
+      document.getElementById('mapfb').innerHTML = `<div class="feedback card ${pts >= 300 ? 'ok' : 'no'}"><b>${cheer} +${gained}점${bonusTxt}</b>실제 위치(빨간 점)와 ${distText(km)} 떨어졌어요.${lifeTxt}${city.e ? `<br>${esc(city.e)}` : ''}</div>`;
       const bossDown = cfg.boss && st.bossHp <= 0;
       const gameOver = st.lives !== null && st.lives <= 0;
       this.textContent = bossDown ? '보스 격파! 🎉' : gameOver ? '게임 끝! 결과 보기 🏁' : st.i === cfg.cities.length - 1 ? '결과 보기 🏁' : '다음 도시 ›';

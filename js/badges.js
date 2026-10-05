@@ -53,6 +53,7 @@ const BADGES = [
   { id: 'bull1', ic: '🎯', name: '명사수', t: 'b', sec: 'map', desc: '지도 문제에서 900점 이상', p: () => [save.ach.bull, 1] },
   { id: 'bull20', ic: '🛰️', name: '인간 GPS', t: 's', sec: 'map', desc: '지도 900점 이상 20번', p: () => [save.ach.bull, 20] },
   { id: 'bull100', ic: '🧭', name: '살아 있는 지도', t: 'g', sec: 'map', desc: '지도 900점 이상 100번', p: () => [save.ach.bull, 100] },
+  { id: 'land30', ic: '🗽', name: '세계 여행가', t: 's', sec: 'map', desc: '랜드마크 찾기에서 600점 이상 30번', p: () => [save.ach.land || 0, 30] },
   { id: 'surv5k', ic: '🏃', name: '서바이벌 5천', t: 's', sec: 'map', desc: '지도 서바이벌 5,000점', p: () => [save.survivalBest, 5000] },
   { id: 'surv15k', ic: '🦸', name: '서바이벌 전설', t: 'g', sec: 'map', desc: '지도 서바이벌 15,000점', p: () => [save.survivalBest, 15000] },
   // 주제 박사
@@ -62,6 +63,7 @@ const BADGES = [
   { id: 'catSci', ic: '🔬', name: '꼬마 과학자', t: 's', sec: 'cat', desc: '과학 상식 정답 100개', p: () => [okIn('science'), 100] },
   { id: 'catKbo', ic: '⚾', name: '야구 해설위원', t: 's', sec: 'cat', desc: '프로야구 정답 100개', p: () => [okIn('kbo'), 100] },
   { id: 'catNon', ic: '🤪', name: '넌센스 왕', t: 's', sec: 'cat', desc: '넌센스 정답 100개', p: () => [okIn('nonsense'), 100] },
+  { id: 'catSam', ic: '🏹', name: '삼국지 군사', t: 's', sec: 'cat', desc: '삼국지 정답 100개', p: () => [okIn('samguk'), 100] },
   { id: 'catMc', ic: '⛏️', name: '마크 박사', t: 's', sec: 'cat', desc: '마인크래프트 정답 100개', p: () => [okIn('minecraft'), 100] },
   { id: 'fixed', ic: '📒', name: '오답 정복자', t: 's', sec: 'cat', desc: '오답 노트에서 30문제 다시 맞히기', p: () => [save.ach.fixed, 30] },
   // 보스·도전
@@ -79,6 +81,8 @@ const BADGES = [
   { id: 'bell50', ic: '🛎️', name: '골든벨을 울려라', t: 'r', sec: 'fun', desc: '골든벨 50문제 전부 통과', p: () => [save.bellWins, 1] },
   { id: 'memo10', ic: '🃏', name: '짝맞추기 달인', t: 's', sec: 'fun', desc: '국기 짝맞추기 10번 완성', p: () => [save.ach.memo, 10] },
   { id: 'puzzle10', ic: '🧩', name: '지도 퍼즐 왕', t: 's', sec: 'fun', desc: '지도 퍼즐 10번 완성', p: () => [save.ach.puzzle, 10] },
+  { id: 'rush16', ic: '👆', name: '번개 손가락', t: 'b', sec: 'fun', desc: '숫자 빨리 누르기 1~16을 혼자 10초 안에', p: () => [save.rushBest && save.rushBest[16] <= 10 ? 1 : 0, 1] },
+  { id: 'rush25', ic: '⚡', name: '초스피드', t: 's', sec: 'fun', desc: '숫자 빨리 누르기 1~25를 혼자 18초 안에', p: () => [save.rushBest && save.rushBest[25] <= 18 ? 1 : 0, 1] },
   // 수집·대전
   { id: 'rides', ic: '🐉', name: '탈것 컬렉터', t: 'g', sec: 'etc', desc: '탈것을 전부 모으기', p: () => [save.rides.length, Object.keys(RIDES).length] },
   { id: 'duel1', ic: '🤝', name: '첫 대전 승리', t: 'b', sec: 'etc', desc: '2인 대전에서 이기기', p: () => [(save.duel || {}).win || 0, 1] },

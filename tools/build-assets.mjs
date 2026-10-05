@@ -64,9 +64,10 @@ for (const [dir, names] of Object.entries(SHEETS)) {
 }
 
 // 3) 목록 + 빌드 버전 (내용이 바뀌면 버전이 바뀌어 설치된 앱이 새로 받는다)
-const core = ['index.html', 'style.css', 'js/core.js', 'js/battle.js', 'js/play.js', 'js/world.js', 'js/versus.js', 'js/badges.js', 'js/minigames.js', 'js/update.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png',
-  'data/countries.js', 'data/cities.js', 'data/history.js', 'data/science.js', 'data/nonsense.js', 'data/kbo.js', 'data/history2.js', 'data/science2.js', 'data/nonsense2.js', 'data/kbo2.js', 'data/minecraft.js', 'data/minecraft2.js', 'data/map.js',
-  'assets/fonts/jua.css'];
+//    js/·data/ 의 파일은 전부 자동으로 넣는다 (파일을 추가해도 여기를 고칠 필요 없음 — B 브랜치와 충돌도 안 남).
+//    data/assets.js 는 이 파일이 만드는 결과라 빼고, 서비스워커가 따로 받는다.
+const jsFiles = (dir) => readdirSync(p(`${dir}/`)).filter((f) => f.endsWith('.js') && f !== 'assets.js').sort().map((f) => `${dir}/${f}`);
+const core = ['index.html', 'style.css', ...jsFiles('js'), ...jsFiles('data'), 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'assets/fonts/jua.css'];
 const precache = [...core, ...fonts.map((f) => `assets/fonts/${f}`), ...Object.values(images)];
 const h = createHash('sha1');
 for (const f of precache) { const u = p(f); if (existsSync(u)) h.update(readFileSync(u)); }

@@ -19,7 +19,7 @@ function sampleR(rng, arr, n) { // 겹치지 않게 n개
 // 구성: 문제은행 7 + 세계 지리 2 + 지도 찾기 1 (n=10 기준), 난이도는 보통·어려움
 function duelQuestions(seed, n = 10) {
   const rng = rngOf(seed);
-  const bank = ['history', 'science', 'kbo', 'nonsense', 'minecraft'].flatMap((cat) => (QB.banks[cat] || []).filter((q) => q.d >= 2).map((q, i) => ({ ...q, cat, k: `duel:${cat}:${i}` })));
+  const bank = ['history', 'science', 'kbo', 'nonsense', 'minecraft', 'samguk'].flatMap((cat) => (QB.banks[cat] || []).filter((q) => q.d >= 2).map((q, i) => ({ ...q, cat, k: `duel:${cat}:${i}` })));
   const withCap = COUNTRIES.filter((c) => c.c && c.d >= 2 && !c.c.startsWith(c.n.replace(/ .*/, '')));
   const geo = sampleR(rng, withCap, Math.max(1, Math.round(n * 0.2))).map((c) => {
     const near = withCap.filter((x) => x !== c && x.cont === c.cont);
@@ -60,11 +60,13 @@ function versusMenu() {
       <div class="tickets">
         ${window.VERSUS_ONLINE ? `<button class="ticket card press wide" data-mode="online" style="--c:#ff6b6b"><span class="art ph">📡</span><div><b>실시간 대전</b><br><span>인터넷으로 연결해서 서로 공격! 아이템·이모티콘</span></div></button>` : ''}
         <button class="ticket card press wide" data-mode="same" style="--c:#ffd43b"><span class="art ph">🤝</span><div><b>같은 문제 대결</b><br><span>인터넷 없이! 같은 방 번호를 넣으면 같은 문제가 나와요</span></div></button>
+        <button class="ticket card press wide" data-mode="rush" style="--c:#4fb3ff"><span class="art ph">⚡</span><div><b>순발력 대결 · 숫자 빨리 누르기</b><br><span>한 기기에서 마주 보고! 1부터 순서대로 먼저 누르면 승리</span></div></button>
       </div>
       <p class="hint" style="text-align:center">전적 ${d.win}승 ${d.lose}패 ${d.draw}무</p>`;
     bindBack(() => show(title));
     bindCharPicker(draw);
     $app.querySelector('[data-mode=same]').onclick = () => { sfx('tap'); show(sameSetup); };
+    $app.querySelector('[data-mode=rush]').onclick = () => { sfx('tap'); show(() => rushSetup(versusMenu)); };
     const on = $app.querySelector('[data-mode=online]');
     if (on) on.onclick = () => { sfx('tap'); window.VERSUS_ONLINE(); };
   };

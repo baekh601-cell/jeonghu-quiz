@@ -626,6 +626,45 @@ body.wide .memo-grid { grid-template-columns: repeat(8, 1fr); max-width: 900px; 
 .pz-chip { background: var(--paper); border: var(--edge); border-radius: 99px; box-shadow: 0 3px 0 var(--navy); padding: 6px 14px; font-size: 17px; }
 .pz-chip.sel { background: var(--sun); transform: translateY(-3px); }
 
+/* ═════════ ⚡ 숫자 빨리 누르기 (js/party.js) ═════════ */
+.rush-vs { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 10px; margin-top: 12px; }
+.rush-vs .art { width: 92px; height: 92px; font-size: 66px; }
+.rush-vs b { font-size: 34px; font-weight: 400; color: var(--coral); text-shadow: 2px 2px 0 var(--navy); }
+.rush { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; background: var(--navy); padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); touch-action: none; user-select: none; -webkit-user-select: none; }
+body.wide .rush.duo { flex-direction: row; } /* 가로 화면: 왼쪽·오른쪽 */
+body:not(.wide) .rush.duo .p0 { transform: rotate(180deg); } /* 세로 화면: 위쪽 사람은 거꾸로 (마주 보고) */
+.rush-half { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 8px; background: color-mix(in srgb, var(--c) 30%, #fff); }
+.rush-half header { flex: none; display: flex; align-items: center; gap: 8px; height: 46px; }
+.rush-half header .art { width: 42px; height: 42px; font-size: 30px; }
+.rush-half header b { font-size: 20px; font-weight: 400; }
+.rush-wins { background: var(--sun); border: 2px solid var(--navy); border-radius: 99px; padding: 0 8px; font-size: 14px; }
+.rush-next { margin-left: auto; font-size: 15px; }
+.rush-next em { font-style: normal; font-size: 26px; color: var(--coral); text-shadow: 1px 1px 0 var(--navy); }
+.rush-time { min-width: 58px; text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; }
+.rush-area { flex: 1; min-height: 0; display: grid; place-items: center; }
+.rush-board { display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-auto-rows: 1fr; gap: 5px; }
+.rush-cell { padding: 0; font-size: inherit; border: 3px solid var(--navy); border-radius: 12px; background: var(--paper); box-shadow: 0 3px 0 var(--navy); touch-action: none; transition: transform .08s, background .15s; }
+.rush-cell:active { transform: translateY(2px); }
+.rush-cell.hit { background: var(--mint); color: #1f2a5a44; box-shadow: none; transform: scale(.88); }
+.rush-half.miss { animation: rushMiss .6s; }
+.rush-half.miss .rush-board { animation: rushShake .3s 2; }
+@keyframes rushMiss { 15% { background: var(--coral); } }
+@keyframes rushShake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.rush-half.lost .rush-board { filter: grayscale(.7); opacity: .6; }
+.rush-msg { position: absolute; inset: 46px 0 0; display: none; place-content: center; text-align: center; gap: 4px; pointer-events: none; background: #ffffff8c; }
+.won .rush-msg, .lost .rush-msg { display: grid; }
+.rush-msg b { font-size: 36px; font-weight: 400; color: #fff; text-shadow: 3px 3px 0 var(--navy), -1px -1px 0 var(--navy); }
+.rush-msg span { font-size: 18px; background: #fff; border: 2px solid var(--navy); border-radius: 99px; padding: 2px 12px; }
+.won .rush-msg b { animation: tada .6s; }
+.rush-mid { flex: none; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; color: #fff; font-size: 16px; }
+body.wide .rush.duo .rush-mid { flex-direction: column; min-width: 64px; }
+body.wide .rush.duo .rush-mid span { writing-mode: vertical-rl; }
+.rush-quit { width: 42px; height: 42px; border-radius: 50%; border: 3px solid var(--navy); background: var(--paper); font-size: 28px; line-height: 1; padding: 0; box-shadow: 0 3px 0 #0006; }
+.rush-count { position: absolute; inset: 0; display: grid; place-items: center; z-index: 6; pointer-events: none; font-size: 96px; color: #fff; text-shadow: 5px 5px 0 var(--navy), -2px -2px 0 var(--navy); }
+.rush-count.pop { animation: tada .5s; }
+.rush-again { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 7; width: min(86%, 340px); display: flex; gap: 10px; }
+.rush-again .go, .rush-again .ghost { margin: 0; flex: 1; font-size: 19px; padding: 12px 6px; }
+
 /* ═════════ 2인 대전 ═════════ */
 .char-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .char-card { display: flex; flex-direction: column; align-items: center; padding: 10px 8px 12px; gap: 4px; position: relative; }
