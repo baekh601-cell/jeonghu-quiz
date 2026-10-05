@@ -298,6 +298,7 @@ const CATS = {
   kbo: { name: '프로야구', ic: '⚾', icon: 'icon-kbo', desc: 'KBO 선수·구단', c: '#1f2a5a' },
   nonsense: { name: '넌센스', ic: '🤪', icon: 'icon-nonsense', desc: '머리를 말랑말랑', c: '#b57cff' },
   minecraft: { name: '마인크래프트', ic: '⛏️', icon: 'icon-minecraft', desc: '몹·제작·레드스톤', c: '#5b8c32' },
+  samguk: { name: '삼국지', ic: '🏹', icon: 'icon-samguk', desc: '영웅·전투·고사성어', c: '#c0392b' },
 };
 // 받침에 따라 은/는, 이/가 붙이기 (괄호 뒤는 괄호 앞 글자 기준)
 function josa(word, withJong, noJong) {
@@ -432,6 +433,8 @@ function adaptDiffs(diffs) {
   return diffs;
 }
 const cityList = (region) => CITIES.filter((c) => !region || c.r === region).map((c) => ({ ...c, k: `city:${c.r}:${c.n}:${c.co}` }));
+// 세계·한국 랜드마크 (data/landmarks.js). 도시와 같은 모양이라 지도 게임에 그대로 쓴다 (ic 이모지, e 설명이 더 있음)
+const landmarkList = (region) => (window.LANDMARKS || []).filter((c) => !region || c.r === region).map((c) => ({ ...c, k: `lm:${c.r}:${c.n}` }));
 
 function topBar(title, right = '') {
   return `<div class="top"><button class="back press" data-back aria-label="뒤로">‹</button><h1>${title}</h1>${right}</div>`;

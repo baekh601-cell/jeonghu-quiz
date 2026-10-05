@@ -201,7 +201,9 @@ async function stageIntro(w, k) {
 
 // 지도 문제 n개를 섞어 넣는다 (첫 문제는 피해서)
 function withMapQuestions(qs, n, diffs) {
-  const cities = drawQuestions(cityList(Math.random() < 0.4 ? 'kr' : 'world'), n, diffs.map((d) => Math.min(3, d)));
+  const region = Math.random() < 0.4 ? 'kr' : 'world';
+  const pool = Math.random() < 0.3 && landmarkList(region).length ? landmarkList(region) : cityList(region); // 가끔은 랜드마크
+  const cities = drawQuestions(pool, n, diffs.map((d) => Math.min(3, d)));
   const out = qs.slice(0, qs.length - n);
   cities.forEach((c) => out.splice(2 + rnd(Math.max(1, out.length - 1)), 0, mapQuestion(c)));
   return out;
@@ -504,11 +506,13 @@ function freeMenu() {
     <div class="tickets">
       ${t('speed', '스피드 챌린지', '⚡', 'icon-speed', `60초 동안 몇 개나? 최고 ${save.speedBest}개`, '#ffd43b', true)}
       ${t('map', '지도에서 도시 찾기', '🗺️', 'icon-map', '세계·한국 지도', '#3ddc97', true)}
+      ${t('landmark', '세계 랜드마크 찾기', '🗽', 'icon-landmark', '에펠탑·피라미드·경복궁은 어디?', '#ff8f3d', true)}
       ${t('survival', '지도 서바이벌', '🎯', 'icon-map', `하트 3개로 어디까지? 최고 ${save.survivalBest.toLocaleString()}점`, '#ff6b6b')}
       ${t('shape', '나라 모양 맞히기', '🧩', 'icon-capital', `실루엣만 보고! 최고 ${save.shapeBest}연속`, '#1f2a5a')}
       ${t('bell', '도전! 골든벨', '🔔', 'icon-bell', `50문제, 틀리면 끝! 최고 ${save.bellBest}문제${save.bellWins ? ` · 🔔×${save.bellWins}` : ''}`, '#ffb000', true)}
       ${t('memo', '국기 짝맞추기', '🃏', 'icon-memo', '국기와 나라 이름 짝 찾기', '#ff8fb1')}
       ${t('puzzle', '지도 퍼즐', '🗺️', 'icon-puzzle', '이웃 나라 5곳을 제자리에', '#3ddc97')}
+      ${t('rush', '숫자 빨리 누르기', '⚡', 'icon-rush', `혼자 또는 둘이! ${save.rushBest[16] ? `최고 ${save.rushBest[16]}초` : '1부터 순서대로'}`, '#4fb3ff')}
       ${Object.entries(CATS).map(([k, c]) => t(k, c.name, c.ic, c.icon, `${countFor(k)}문제`, c.c)).join('')}
       ${t('mix', '전부 섞기', '🌏', 'icon-mix', '모든 주제에서', '#4fb3ff')}
       ${t('wrong', '오답 노트', '📒', 'icon-wrongnote', `${save.wrong.length}개`, '#ff6b6b')}
@@ -517,8 +521,10 @@ function freeMenu() {
   $app.querySelectorAll('[data-free]').forEach((b) => (b.onclick = () => {
     sfx('tap');
     const k = b.dataset.free;
-    if (k === 'map') return show(freeMapSetup);
+    if (k === 'map') return show(() => freeMapSetup(false));
+    if (k === 'landmark') return show(() => freeMapSetup(true));
     if (k === 'bell') return flyTo(goldenBell);
+    if (k === 'rush') return show(() => rushSetup(freeMenu));
     if (MINIGAMES[k]) {
       const start = () => MINIGAMES[k].run({ onQuit: () => show(freeMenu), onEnd: (r) => freeResult({ ...r, good: true, again: start }) });
       return flyTo(start);
@@ -653,29 +659,36 @@ function goldenBell() {
   run(0);
 }
 
-function freeMapSetup() {
+// lm: true 면 🗽 랜드마크 찾기 (data/landmarks.js), 아니면 도시 찾기
+function freeMapSetup(lm = false) {
   let region = 'world', diff = 0;
+  const list = (r) => (lm ? landmarkList(r) : cityList(r));
+  const bestKey = (r) => (lm ? `lm-${r}` : r);
+  const what = lm ? '랜드마크' : '도시';
   const draw = () => {
-    const n = CITIES.filter((c) => c.r === region && (!diff || c.d === diff)).length;
+    const n = list(region).filter((c) => !diff || c.d === diff).length;
     $app.innerHTML = `${topBar('탑승 준비')}
-      <div class="setup-hero card">${JH.explorer()}<div><b>지도에서 도시 찾기</b><span>도시 위치를 톡! 누르고 [확인]. 가까울수록 점수가 높아요 (한 도시 최대 1000점).</span></div></div>
+      <div class="setup-hero card">${lm ? '<span class="art ph">🗽</span>' : JH.explorer()}<div><b>${lm ? '세계 랜드마크 찾기' : '지도에서 도시 찾기'}</b><span>${lm ? '에펠탑, 피라미드, 경복궁…! 어디 있는지 지도에서 톡! 누르고 [확인]. 맞히면 재미있는 이야기도 알려 줘요.' : '도시 위치를 톡! 누르고 [확인]. 가까울수록 점수가 높아요 (한 도시 최대 1000점).'}</span></div></div>
       <div class="label">지도</div>
       <div class="opts">${Object.entries(REGIONS).map(([k, r]) => `<button class="opt press ${k === region ? 'on' : ''}" data-r="${k}">${r.ic} ${r.name}</button>`).join('')}</div>
       <div class="label">난이도</div>
       <div class="opts">${[0, 1, 2, 3].map((d) => `<button class="opt press ${d === diff ? 'on' : ''}" data-d="${d}">${d ? stars(d) + ' ' : ''}${DIFF_NAME[d]}</button>`).join('')}</div>
-      <p class="hint">도시 ${n}곳 · 최고 점수 ${(save.mapBest[region] || 0).toLocaleString()}</p>
+      <p class="hint">${what} ${n}곳 · 최고 점수 ${(save.mapBest[bestKey(region)] || 0).toLocaleString()}</p>
       <button class="go press">출발! 🛫</button>`;
     bindBack(() => show(freeMenu));
     $app.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => { sfx('tap'); region = b.dataset.r; draw(); }));
     $app.querySelectorAll('[data-d]').forEach((b) => (b.onclick = () => { sfx('tap'); diff = +b.dataset.d; draw(); }));
     $app.querySelector('.go').onclick = () => {
+      const key = bestKey(region);
       const start = () => runMap({
-        title: `${REGIONS[region].ic} ${REGIONS[region].name} 지도`, cities: drawQuestions(cityList(region), 10, diff),
+        title: `${lm ? '🗽' : REGIONS[region].ic} ${REGIONS[region].name} ${lm ? '랜드마크' : '지도'}`, cities: drawQuestions(list(region), 10, diff),
         onQuit: () => show(freeMenu),
         onEnd: (r) => {
-          const best = r.total > (save.mapBest[region] || 0);
-          if (best) { save.mapBest[region] = r.total; persist(); }
-          freeResult({ correct: 0, total: 0, coins: 0, title: `${r.total.toLocaleString()}점`, sub: best ? '🎉 새 최고 기록!' : `최고 기록 ${(save.mapBest[region] || 0).toLocaleString()}점`, again: start });
+          const best = r.total > (save.mapBest[key] || 0);
+          if (best) { save.mapBest[key] = r.total; }
+          if (lm) save.ach.land = (save.ach.land || 0) + r.log.filter((x) => x.pts >= 600).length; // 🏅 세계 여행가
+          persist();
+          freeResult({ correct: 0, total: 0, coins: 0, good: r.total >= 5000, title: `${r.total.toLocaleString()}점`, sub: best ? '🎉 새 최고 기록!' : `최고 기록 ${(save.mapBest[key] || 0).toLocaleString()}점`, again: start });
         },
       });
       flyTo(start);
