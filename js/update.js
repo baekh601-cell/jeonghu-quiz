@@ -12,7 +12,7 @@ const UPDATE_BASE = `https://github.com/${UPDATE_REPO}/releases/download`;
 const SKIP_KEY = 'jq-update-skip'; // [나중에]를 누른 빌드 번호 (같은 빌드는 자동으로 다시 묻지 않음)
 const upd = { build: 0, isB: false, latest: 0, url: '', state: 'idle', err: '' };
 let lastUpdateCheck = 0;
-const NativeHttp = NATIVE ? (window.Capacitor.Plugins?.CapacitorHttp || window.Capacitor.registerPlugin?.('CapacitorHttp')) : null;
+const NativeHttp = nativePlugin('CapacitorHttp'); // 앱에 기본으로 들어 있는 네이티브 HTTP
 
 async function getJson(url, headers = {}) {
   if (NativeHttp) {

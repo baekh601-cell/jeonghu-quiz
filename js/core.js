@@ -147,7 +147,20 @@ function sfx(name) { try { SFX[name] && SFX[name](); } catch (e) { /* 소리 실
 // ───────── 안드로이드 앱(APK)으로 실행될 때 ─────────
 // Capacitor 가 앱 안에 넣어 주는 window.Capacitor 로 기기 기능을 쓴다. 웹에서는 전부 null.
 const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-const nativePlugin = (name) => (NATIVE && window.Capacitor.registerPlugin ? window.Capacitor.registerPlugin(name) : null);
+// 이 앱은 번들러 없이 만들어서 @capacitor/core 의 registerPlugin 이 없다 (앱이 넣어 주는 native-bridge 에는 없음).
+// 그래서 native-bridge 의 nativePromise / addListener 로 직접 부르는 작은 대리 객체를 만든다.
+//   예) AppP.getInfo() → Capacitor.nativePromise('App', 'getInfo', {})
+const nativePlugin = (name) => {
+  if (!NATIVE) return null;
+  const C = window.Capacitor;
+  if (C.registerPlugin) return C.registerPlugin(name);
+  if (!C.nativePromise) return null;
+  return new Proxy({}, {
+    get: (_, method) => (method === 'then' ? undefined // await 했을 때 Promise 로 착각하지 않게
+      : method === 'addListener' ? (event, cb) => C.addListener(name, event, cb)
+      : (options = {}) => C.nativePromise(name, String(method), options)),
+  });
+};
 const Haptics = nativePlugin('Haptics'), KeepAwakeP = nativePlugin('KeepAwake'), AppP = nativePlugin('App');
 
 // 진동. 소리 끄기(🔇)를 하면 진동도 꺼진다
