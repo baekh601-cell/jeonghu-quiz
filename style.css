@@ -183,6 +183,7 @@ img { -webkit-user-drag: none; }
 .land { fill: #fff3cf; stroke: #a58c5a; vector-effect: non-scaling-stroke; stroke-width: .7; }
 .land.kr { fill: #ffe9a8; stroke-width: 1.1; }
 .pin-guess { fill: var(--sky); stroke: var(--navy); vector-effect: non-scaling-stroke; stroke-width: 2.5; }
+.pin-guess2 { fill: var(--mint); stroke: var(--navy); vector-effect: non-scaling-stroke; stroke-width: 2.5; }
 .pin-real { fill: var(--coral); stroke: var(--navy); vector-effect: non-scaling-stroke; stroke-width: 2.5; }
 .pin-line { stroke: var(--navy); stroke-dasharray: 6 5; vector-effect: non-scaling-stroke; stroke-width: 2.5; fill: none; animation: dash 1s linear infinite; }
 @keyframes dash { to { stroke-dashoffset: -22; } }
@@ -664,6 +665,59 @@ body.wide .rush.duo .rush-mid span { writing-mode: vertical-rl; }
 .rush-count.pop { animation: tada .5s; }
 .rush-again { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 7; width: min(86%, 340px); display: flex; gap: 10px; }
 .rush-again .go, .rush-again .ghost { margin: 0; flex: 1; font-size: 19px; padding: 12px 6px; }
+.rush-info { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.rush-stars { font-size: 18px; letter-spacing: 1px; }
+
+/* 🤠 총잡이 결투 */
+.draw-pad { flex: 1; min-height: 0; margin-top: 6px; border: var(--edge); border-radius: 22px; background: #fff7e0; display: grid; place-content: center; text-align: center; gap: 6px; touch-action: none; }
+.draw-pad b { font-size: clamp(40px, 12vmin, 96px); font-weight: 400; line-height: 1; }
+.draw-pad span { font-size: 18px; color: var(--muted); }
+.draw-pad.wait { background: #ffe9a8; }
+.draw-pad.go { background: var(--mint); animation: tada .4s; }
+.draw-pad.go b { color: #fff; text-shadow: 4px 4px 0 var(--navy); }
+.draw-pad.win { background: var(--sun); }
+.draw-pad.lose { background: #e5e5ee; }
+
+/* 🚩 국기 찾기 */
+.snap-target { flex: none; text-align: center; font-size: 20px; padding: 4px 0 6px; }
+.snap-target b { font-weight: 400; font-size: 26px; color: var(--coral); text-shadow: 1px 1px 0 var(--navy); }
+.rush-cell.snap { font-size: 1.5em; line-height: 1; }
+.rush-cell.snap.hit { background: var(--sun); color: inherit; transform: scale(1.08); }
+
+/* 🏅 순발력 올림픽 */
+.olymp { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: linear-gradient(160deg, #4fb3ff, #b57cff); }
+.olymp-card { width: min(100%, 400px); text-align: center; padding: 18px 18px 14px; }
+.olymp-card small { color: var(--muted); font-size: 15px; }
+.olymp-card h2 { margin: 2px 0 4px; font-weight: 400; font-size: 30px; }
+.olymp-card p { color: var(--muted); margin: 0 0 6px; }
+.olymp-score { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0; }
+.olymp-score .art { width: 64px; height: 64px; font-size: 46px; }
+.olymp-score b { font-size: 34px; font-weight: 400; }
+.olymp-ic { font-size: 64px; line-height: 1.1; animation: bob 1.6s ease-in-out infinite; }
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 14px; }
+.podium > div { display: flex; flex-direction: column; align-items: center; border: var(--edge); border-radius: 18px 18px 6px 6px; padding: 8px 10px 4px; background: var(--paper); box-shadow: var(--lift); }
+.podium .gold { background: #fff3c4; padding-bottom: 26px; }
+.podium .gold .art { width: 140px; height: 140px; font-size: 100px; }
+.podium .silver .art { width: 96px; height: 96px; font-size: 70px; }
+.podium b { font-size: 40px; font-weight: 400; }
+
+/* 🎯 지도 다트 · 🗺️ 땅따먹기 */
+.dart-turn, .land-turn { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin-bottom: 10px; background: color-mix(in srgb, var(--c) 28%, #fff); }
+.dart-turn .art, .land-turn .art { width: 62px; height: 62px; font-size: 44px; flex: none; }
+.dart-turn b, .land-turn b { display: block; font-size: 21px; font-weight: 400; }
+.dart-turn span, .land-turn span { font-size: 17px; }
+.land-turn.win { animation: tada .6s; }
+.dartmap { margin-bottom: 4px; }
+.land-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(100%, 420px); margin: 0 auto 12px; }
+.land-cell { aspect-ratio: 1; border: var(--edge); border-radius: 16px; background: var(--paper); box-shadow: 0 4px 0 var(--navy); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; }
+.land-cell span { font-size: 34px; line-height: 1; }
+.land-cell small { font-size: 14px; }
+.land-cell:disabled { opacity: 1; }
+.land-cell:not(.own):disabled { filter: grayscale(.4); opacity: .75; }
+.land-cell.sel { background: var(--sun); filter: none; opacity: 1; transform: translateY(-3px); }
+.land-cell.own { background: color-mix(in srgb, var(--c) 55%, #fff); }
+.land-cell.own .art { width: 80%; height: 80%; font-size: 40px; }
+.land-cell.line { animation: tada .6s; box-shadow: 0 0 0 4px var(--sun), 0 4px 0 var(--navy); }
 
 /* ═════════ 2인 대전 ═════════ */
 .char-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }

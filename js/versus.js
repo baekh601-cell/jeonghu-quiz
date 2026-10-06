@@ -60,13 +60,19 @@ function versusMenu() {
       <div class="tickets">
         ${window.VERSUS_ONLINE ? `<button class="ticket card press wide" data-mode="online" style="--c:#ff6b6b"><span class="art ph">📡</span><div><b>실시간 대전</b><br><span>인터넷으로 연결해서 서로 공격! 아이템·이모티콘</span></div></button>` : ''}
         <button class="ticket card press wide" data-mode="same" style="--c:#ffd43b"><span class="art ph">🤝</span><div><b>같은 문제 대결</b><br><span>인터넷 없이! 같은 방 번호를 넣으면 같은 문제가 나와요</span></div></button>
-        <button class="ticket card press wide" data-mode="rush" style="--c:#4fb3ff"><span class="art ph">⚡</span><div><b>순발력 대결 · 숫자 빨리 누르기</b><br><span>한 기기에서 마주 보고! 1부터 순서대로 먼저 누르면 승리</span></div></button>
+        <button class="ticket card press wide" data-mode="olymp" style="--c:#b57cff"><span class="art ph">🏅</span><div><b>순발력 올림픽</b><br><span>한 기기에서 마주 보고! 숫자 누르기·총잡이 결투·국기 찾기, 2경기 먼저 이기면 금메달</span></div></button>
+        <button class="ticket card press wide" data-mode="land" style="--c:#3ddc97"><span class="art ph">🗺️</span><div><b>땅따먹기 퀴즈</b><br><span>번갈아 칸을 골라 문제를 맞히면 내 땅! 한 줄 먼저 만들면 승리</span></div></button>
+        <button class="ticket card press wide" data-mode="darts" style="--c:#ff8f3d"><span class="art ph">🎯</span><div><b>지도 다트 대결</b><br><span>같은 도시를 번갈아 몰래 찍기! 더 가까운 사람이 승리 (5판)</span></div></button>
+        <button class="ticket card press wide" data-mode="rush" style="--c:#4fb3ff"><span class="art ph">⚡</span><div><b>숫자 빨리 누르기</b><br><span>한 기기에서 마주 보고! 1부터 순서대로 먼저 누르면 승리</span></div></button>
       </div>
       <p class="hint" style="text-align:center">전적 ${d.win}승 ${d.lose}패 ${d.draw}무</p>`;
     bindBack(() => show(title));
     bindCharPicker(draw);
     $app.querySelector('[data-mode=same]').onclick = () => { sfx('tap'); show(sameSetup); };
     $app.querySelector('[data-mode=rush]').onclick = () => { sfx('tap'); show(() => rushSetup(versusMenu)); };
+    $app.querySelector('[data-mode=olymp]').onclick = () => { sfx('power'); olympics(versusMenu); };
+    $app.querySelector('[data-mode=land]').onclick = () => { sfx('power'); show(() => landGrab(versusMenu)); };
+    $app.querySelector('[data-mode=darts]').onclick = () => { sfx('power'); show(() => mapDarts(versusMenu)); };
     const on = $app.querySelector('[data-mode=online]');
     if (on) on.onclick = () => { sfx('tap'); window.VERSUS_ONLINE(); };
   };

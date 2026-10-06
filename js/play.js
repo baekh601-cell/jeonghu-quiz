@@ -79,13 +79,14 @@ function mapPicker(wrap, city, onPick, opts = {}) {
     return [cx - v[2] / 2, cy - v[3] / 2, v[2], v[3]];
   }
 
-  let guess = null, ghost = null, done = false, interacting = false, raf = 0;
+  let guess = null, ghost = null, extra = [], done = false, interacting = false, raf = 0;
   const pinR = () => 8 / frame(drawn).ppu; // 확대해도 화면에서 항상 비슷한 크기
   // g 가 가로로 kx 배 줄어 있으니 rx 를 늘려서 동그랗게 보이게 한다
   const pin = (cls, lon, lat) => `<ellipse class="${cls}" cx="${lon}" cy="${-lat}" rx="${pinR() / R.kx}" ry="${pinR()}"/>`;
   function redraw() {
     if (!done) { marks.innerHTML = guess ? pin('pin-guess', guess.lon, guess.lat) : ''; return; }
-    marks.innerHTML = (ghost ? `<line class="beam-line" x1="${ghost.lon}" y1="${-ghost.lat}" x2="${guess.lon}" y2="${-guess.lat}"/>` + pin('pin-ghost', ghost.lon, ghost.lat) : '')
+    marks.innerHTML = extra.map((g) => `<line class="pin-line" x1="${g.lon}" y1="${-g.lat}" x2="${city.lon}" y2="${-city.lat}"/>` + pin(g.cls || 'pin-guess2', g.lon, g.lat)).join('')
+      + (ghost ?`<line class="beam-line" x1="${ghost.lon}" y1="${-ghost.lat}" x2="${guess.lon}" y2="${-guess.lat}"/>` + pin('pin-ghost', ghost.lon, ghost.lat) : '')
       + (guess ? `<line class="pin-line" x1="${guess.lon}" y1="${-guess.lat}" x2="${city.lon}" y2="${-city.lat}"/>` + pin('pin-guess', guess.lon, guess.lat) : '')
       + pin('pin-real', city.lon, city.lat);
   }
@@ -220,9 +221,12 @@ function mapPicker(wrap, city, onPick, opts = {}) {
 
   return {
     hasGuess: () => !!guess,
-    reveal() {
+    guessOf: () => guess, // 지도 다트 대결: 찍은 위치
+    // others: 다른 사람이 찍은 곳도 함께 보여 줄 때 [{ lon, lat, cls }]
+    reveal(others = []) {
       stopFling();
       done = true;
+      extra = others;
       let km = guess ? haversine(guess.lat, guess.lon, city.lat, city.lon) : Infinity;
       const from = guess;
       if (beamOn()) {
@@ -244,7 +248,7 @@ function mapPicker(wrap, city, onPick, opts = {}) {
       }
       const pts = guess ? Math.round(1000 * Math.exp(-km / R.scale)) : 0;
       // 두 점이 다 보이게 화면 이동
-      const pts2 = guess ? [guess, city] : [city];
+      const pts2 = [...(guess ? [guess] : []), ...extra, city];
       const xs = pts2.map((p) => p.lon * R.kx), ys = pts2.map((p) => -p.lat);
       const pad = Math.max(home0[2] / 20, (Math.max(...xs) - Math.min(...xs)) * 0.4, (Math.max(...ys) - Math.min(...ys)) * 0.4);
       const w = Math.min(home0[2], Math.max(...xs) - Math.min(...xs) + pad * 2);
